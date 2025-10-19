@@ -1,0 +1,15 @@
+# ide
+.idea
+
+# mac
+.DS_Store
+
+# python
+.venv/
+venv/
+__pycache__/
+
+# data
+data/
+
+.ipynb_checkpoints/
