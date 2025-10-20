@@ -33,7 +33,7 @@ class ConvBlock(nn.Module):
 
 
 class TransposeConvBlock(nn.Module):
-    def __init__(self, input_size, in_channels, out_channels, kernel_size, stride, padding, out_padding, activation=None, norm=True, dropout=0.):
+    def __init__(self, output_size, in_channels, out_channels, kernel_size, stride, padding, out_padding, activation=None, norm=True, dropout=0.):
         super().__init__()
         layers = []
         
@@ -42,7 +42,7 @@ class TransposeConvBlock(nn.Module):
 
         if norm:
             self.norm = True
-            layers.append(nn.LayerNorm(in_channels, input_size, input_size))
+            layers.append(nn.LayerNorm([out_channels, output_size, output_size]))
 
         if activation:
             layers.append(activation())
@@ -96,15 +96,15 @@ class Generator(nn.Module):
         super().__init__()
         layers = []
 
-        block = TransposeConvBlock(10, 1, 4, 5, 1, 0, 0, nn.ReLU, True)  # 14
+        block = TransposeConvBlock(14, 1, 4, 5, 1, 0, 0, nn.ReLU, True)  # 14
         layers.append(block)
-        block = TransposeConvBlock(14, 4, 8, 5, 1, 0, 0, nn.ReLU, True)  # 18
+        block = TransposeConvBlock(18, 4, 8, 5, 1, 0, 0, nn.ReLU, True)  # 18
         layers.append(block)
-        block = TransposeConvBlock(18, 8, 16, 5, 1, 0, 0, nn.ReLU, True)  # 22
+        block = TransposeConvBlock(22, 8, 16, 5, 1, 0, 0, nn.ReLU, True)  # 22
         layers.append(block)
-        block = TransposeConvBlock(22, 16, 16, 5, 1, 0, 0, nn.ReLU, True)  # 26
+        block = TransposeConvBlock(26, 16, 16, 5, 1, 0, 0, nn.ReLU, True)  # 26
         layers.append(block)
-        block = TransposeConvBlock(26, 1, 5, 1, 1, 0, nn.Sigmoid, True)  # 28
+        block = TransposeConvBlock(28, 16, 1, 5, 1, 1, 0, nn.Sigmoid, True)  # 28
         layers.append(block)
 
         self.sequence = nn.Sequential(*layers)
@@ -149,20 +149,20 @@ def show_plt(generator, num_of_classes):
 
 
 if __name__ == "__main__":
-    block1 = TransposeConvBlock(2, 4, 5, 1, 0, 0) # 14
-    block2 = TransposeConvBlock(4, 8, 5, 1, 0, 0) # 18
-    block3 = TransposeConvBlock(8, 16, 5, 1, 0, 0) # 22
-    block4 = TransposeConvBlock(16, 16, 5, 1, 0, 0) # 26
-    block5 = TransposeConvBlock(16, 1, 5, 1, 1, 0)  # 28
+    # block1 = TransposeConvBlock(10,2, 4, 5, 1, 0, 0) # 14
+    # block2 = TransposeConvBlock(4, 8, 5, 1, 0, 0) # 18
+    # block3 = TransposeConvBlock(8, 16, 5, 1, 0, 0) # 22
+    # block4 = TransposeConvBlock(16, 16, 5, 1, 0, 0) # 26
+    # block5 = TransposeConvBlock(16, 1, 5, 1, 1, 0)  # 28
     seed = createOnehot2DSeed([2], 10)
     print(seed.shape)
 
-    out = block1(seed)
-    out = block2(out)
-    out = block3(out)
-    out = block4(out)
-    out = block5(out)
-    print(out.shape)
+    # out = block1(seed)
+    # out = block2(out)
+    # out = block3(out)
+    # out = block4(out)
+    # out = block5(out)
+    # print(out.shape)
 
     model = Generator()
     images = model(seed)
