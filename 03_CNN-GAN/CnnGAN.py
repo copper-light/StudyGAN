@@ -33,7 +33,7 @@ class ConvBlock(nn.Module):
 
 
 class TransposeConvBlock(nn.Module):
-    def __init__(self, output_size, in_channels, out_channels, kernel_size, stride, padding, out_padding, activation=None, norm=True, dropout=0.):
+    def __init__(self, in_channels, out_channels, kernel_size, stride, padding, out_padding, activation=None, norm=True, dropout=0.):
         super().__init__()
         layers = []
         
@@ -42,7 +42,7 @@ class TransposeConvBlock(nn.Module):
 
         if norm:
             self.norm = True
-            layers.append(nn.LayerNorm([out_channels, output_size, output_size]))
+            layers.append(nn.InstanceNorm2d(out_channels))
 
         if activation:
             layers.append(activation())
@@ -62,19 +62,15 @@ class Discriminator(nn.Module):
     def __init__(self):
         super().__init__()
 
-        self.conv1 = ConvBlock(1, 8, 3, 1, 1) # 28
+        self.conv1 = ConvBlock(1, 32, 3, 1, 1) # 28
         # layers.append(nn.functional.max_pool2d(2)) # 14
-        self.conv2 = ConvBlock(8, 16, 3, 1, 1) # 14
+        self.conv2 = ConvBlock(32, 32, 3, 1, 1) # 14
         # layers.append(nn.functional.max_pool2d(2))  # 7
-        self.conv3 = ConvBlock(16, 32, 3, 1, 1) # 7
+        self.conv3 = ConvBlock(32, 16, 3, 1, 1) # 7
         # self.featureBlock = nn.Sequential(*layers)
 
         layers = []
-        layers.append(nn.Linear(32 * 7 * 7, 1024))
-        layers.append(nn.ReLU(inplace=True))
-        layers.append(nn.Linear(1024, 512))
-        layers.append(nn.ReLU(inplace=True))
-        layers.append(nn.Linear(512, 1))
+        layers.append(nn.Linear(16 * 7 * 7, 1))
         layers.append(nn.Sigmoid())
         self.fc = nn.Sequential(*layers)
 
@@ -96,15 +92,11 @@ class Generator(nn.Module):
         super().__init__()
         layers = []
 
-        block = TransposeConvBlock(14, 1, 4, 5, 1, 0, 0, nn.ReLU, True)  # 14
+        block = TransposeConvBlock(1, 32, 5, 1, 0, 0, nn.ReLU, True)  # 14
         layers.append(block)
-        block = TransposeConvBlock(18, 4, 8, 5, 1, 0, 0, nn.ReLU, True)  # 18
+        block = TransposeConvBlock(32, 64, 7, 1, 0, 0, nn.ReLU, True)  # 20
         layers.append(block)
-        block = TransposeConvBlock(22, 8, 16, 5, 1, 0, 0, nn.ReLU, True)  # 22
-        layers.append(block)
-        block = TransposeConvBlock(26, 16, 16, 5, 1, 0, 0, nn.ReLU, True)  # 26
-        layers.append(block)
-        block = TransposeConvBlock(28, 16, 1, 5, 1, 1, 0, nn.Sigmoid, True)  # 28
+        block = TransposeConvBlock(64, 1, 9, 1, 0, 0, nn.ReLU, True)  # 28
         layers.append(block)
 
         self.sequence = nn.Sequential(*layers)
