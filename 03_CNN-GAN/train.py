@@ -8,7 +8,8 @@ from torchvision import transforms, datasets
 
 import numpy as np
 
-from CnnGAN import Discriminator, Generator, show_plt, createOnehot2DSeed
+# from CnnGAN import show_plt, createOnehot2DSeed
+from GAN import Discriminator, Generator, createOnehotSeed, show_plt
 
 
 logging.basicConfig(filename='log/train.log', level=logging.INFO)
@@ -68,18 +69,15 @@ if __name__ == "__main__":
         for step, (x, label) in enumerate(loader):
             batch_size = x.shape[0]
             x = x.to(device)
-            # target = torch.Tensor([1.]).to(device)
             target = torch.ones(batch_size, 1).to(device)
             pos_loss = train_step(discriminator, x, target, criterion, disc_optimizer)
     
-            seed = createOnehot2DSeed(torch.ones(int(batch_size/2)), num_classes)
-            seed = seed.to(device)
+            seed = createOnehotSeed(torch.ones(int(batch_size)), num_classes).to(device)
             x = generator(seed).detach()
-            target = torch.zeros(int(batch_size/2), 1).to(device)
+            target = torch.zeros(int(batch_size), 1).to(device)
             neg_loss = train_step(discriminator, x, target, criterion, disc_optimizer)
     
-            seed = createOnehot2DSeed(label.reshape(-1), num_classes)
-            seed = seed.to(device)
+            seed = createOnehotSeed(label.reshape(-1), num_classes).to(device)
             x = generator(seed)
             target = torch.ones(batch_size, 1).to(device)
             gen_loss = train_step(discriminator, x, target, criterion, genr_optimizer)
