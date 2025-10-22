@@ -12,4 +12,8 @@ __pycache__/
 # data
 data/
 
+# jupyter
 .ipynb_checkpoints/
+
+# user
+log/
