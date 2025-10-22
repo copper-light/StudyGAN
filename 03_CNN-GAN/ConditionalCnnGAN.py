@@ -33,7 +33,7 @@ class Discriminator(nn.Module):
             nn.Dropout(0.5),
         )
         self.fc = nn.Sequential(
-            nn.Linear(7 * 7 * 1, 1),
+            nn.Linear(7 * 7 * 1 + 10, 1),
             nn.Sigmoid()
         )
 
@@ -49,7 +49,7 @@ class Generator(nn.Module):
         super().__init__()
 
         self.input = nn.Sequential(
-            nn.Linear(100, 3136),
+            nn.Linear(110, 3136),
             nn.BatchNorm1d(3136),
             nn.ReLU()
         )
@@ -69,7 +69,7 @@ class Generator(nn.Module):
             # 28 -> 28
             nn.Conv2d(64, 1, kernel_size=3, stride=1, padding=1, bias=False),
             nn.BatchNorm2d(1),
-            nn.Sigmoid()
+            nn.Sigmoid() # tanh 와 비교해볼 필요 있음 -> 이미지에서 tanh
         )
 
     def forward(self, x):
@@ -80,8 +80,9 @@ class Generator(nn.Module):
 
 def createOnehotSeed(class_indexes, classes_num):
     # onehot = createOnehot2DMatrix(class_indexes, classes_num)
+    onehot = nn.functional.one_hot(class_indexes, classes_num)
     seed = torch.randn(len(class_indexes), 100)
-    # seed = torch.concat([seed, onehot], dim=1)
+    seed = torch.concat([seed, onehot], dim=1)
     return seed
 
 def show_plt(generator, num_of_classes, save_path = None):
@@ -111,8 +112,9 @@ def show_plt(generator, num_of_classes, save_path = None):
 
 if __name__ == '__main__':
 
+    seed = createOnehotSeed(torch.tensor([1,2,3,4,5,6,7,8,9,0]), 10)
+
     gen = Generator()
-    seed = torch.randn((64, 100))
     images = gen(seed)
     print(images.shape)
 
