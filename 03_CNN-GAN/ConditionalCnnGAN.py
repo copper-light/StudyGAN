@@ -14,9 +14,15 @@ class Discriminator(nn.Module):
 
     def __init__(self):
         super().__init__()
+
+        self.input_label = nn.Sequential(
+            nn.Linear(10, 28 * 28),
+            nn.LeakyReLU(0.2),
+        )
+
         self.feature = nn.Sequential(
             # 28
-            nn.Conv2d(1, 64, kernel_size=5, stride=2, padding=2, bias=False),
+            nn.Conv2d(2, 64, kernel_size=5, stride=2, padding=2, bias=False),
             nn.BatchNorm2d(64),
             nn.LeakyReLU(0.2),
             nn.Dropout(0.5),
@@ -33,11 +39,14 @@ class Discriminator(nn.Module):
             nn.Dropout(0.5),
         )
         self.fc = nn.Sequential(
-            nn.Linear(7 * 7 * 1 + 10, 1),
+            nn.Linear(7 * 7, 1),
             nn.Sigmoid()
         )
 
-    def forward(self, x):
+    def forward(self, x, label):
+        label = self.input_label(label.float())
+        label = label.view(label.shape[0], *x.shape[1:])
+        x = torch.concat([x, label], dim=1)
         x = self.feature(x)
         x = x.flatten(1)
         x = self.fc(x)
@@ -89,7 +98,7 @@ def show_plt(generator, num_of_classes, save_path = None):
     fig, axes = plt.subplots(1, num_of_classes, figsize=(15, 6))  # 2행 5열 격자 생성
 
     classes = [v for v in range(num_of_classes)]
-
+    classes = torch.tensor(classes)
     seed = createOnehotSeed(classes, num_of_classes)
     seed = seed.to(device)
     images = generator(seed)
@@ -118,6 +127,9 @@ if __name__ == '__main__':
     images = gen(seed)
     print(images.shape)
 
+    labels = seed[:,100:]
+    print(labels.shape)
+
     dis = Discriminator()
-    pred = dis(images)
+    pred = dis(images, labels)
     print(pred.shape)

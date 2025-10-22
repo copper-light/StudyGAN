@@ -94,7 +94,7 @@ def train():
         avg_gen_loss = np.mean(gen_losses)
         avg_dis_loss = np.mean(dis_losses)
 
-        show_plt(generator, num_classes, f'log/checkpoint_{epoch}_{step}.png')
+        show_plt(generator, num_classes, f'log/checkpoint_{epoch}_last.png')
         logging.info(f'Epoch {epoch}, elapsed: {elapsed}, DiscLoss: {avg_dis_loss:.04f}, GenLoss: {avg_gen_loss:.04f}')
 
         if bestest > avg_gen_loss:
