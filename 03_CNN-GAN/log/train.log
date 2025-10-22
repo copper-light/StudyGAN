@@ -1,0 +1,26 @@
+INFO:root:---- Step 0, DiscLoss: 0.7329, GenLoss: 0.6022
+INFO:root:Epoch 1, elapsed: 31.79964017868042, DiscLoss: 0.0468, GenLoss: 5.8002
+INFO:root:---- Step 0, DiscLoss: 0.0072, GenLoss: 7.2535
+INFO:root:Epoch 2, elapsed: 31.072318077087402, DiscLoss: 0.0040, GenLoss: 8.9111
+INFO:root:---- Step 0, DiscLoss: 0.0004, GenLoss: 9.9481
+INFO:root:Epoch 3, elapsed: 31.7733793258667, DiscLoss: 0.0024, GenLoss: 10.3199
+INFO:root:---- Step 0, DiscLoss: 0.0001, GenLoss: 11.0547
+INFO:root:Epoch 4, elapsed: 32.01874017715454, DiscLoss: 0.0017, GenLoss: 11.5370
+INFO:root:---- Step 0, DiscLoss: 0.0001, GenLoss: 10.2169
+INFO:root:---- Step 0, DiscLoss: 0.7378, GenLoss: 0.6385
+INFO:root:---- Step 0, DiscLoss: 0.7240, GenLoss: 0.6504
+INFO:root:Epoch 1, elapsed: 32.72397255897522, DiscLoss: 0.0478, GenLoss: 5.7861
+INFO:root:---- Step 0, DiscLoss: 0.0063, GenLoss: 7.9610
+INFO:root:---- Step 0, DiscLoss: 0.6973, GenLoss: 0.6200
+INFO:root:---- Step 0, DiscLoss: 0.6510, GenLoss: 0.8329
+INFO:root:---- Step 0, DiscLoss: 0.6501, GenLoss: 0.8706
+INFO:root:---- Step 10000, DiscLoss: 0.0345, GenLoss: 6.9675
+INFO:root:Epoch 1, elapsed: 126.69591116905212, DiscLoss: 0.0294, GenLoss: 7.5594
+INFO:root:---- Step 0, DiscLoss: 0.0031, GenLoss: 12.9783
+INFO:root:---- Step 10000, DiscLoss: 0.0154, GenLoss: 9.5705
+INFO:root:Epoch 2, elapsed: 120.80113244056702, DiscLoss: 0.0135, GenLoss: 9.7692
+INFO:root:---- Step 0, DiscLoss: 0.0001, GenLoss: 11.9770
+INFO:root:---- Step 10000, DiscLoss: 0.0021, GenLoss: 12.4173
+INFO:root:Epoch 3, elapsed: 121.27796173095703, DiscLoss: 0.0014, GenLoss: 14.4836
+INFO:root:---- Step 0, DiscLoss: 0.0000, GenLoss: 21.9924
+INFO:root:---- Step 10000, DiscLoss: 0.0000, GenLoss: 24.6518

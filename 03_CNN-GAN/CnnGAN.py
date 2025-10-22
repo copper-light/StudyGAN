@@ -15,13 +15,13 @@ class ConvBlock(nn.Module):
         super().__init__()
         layers = []
 
-        layers.append(nn.Conv2d(in_channels, out_channels, kernel_size, stride, padding))
+        layers.append(nn.Conv2d(in_channels, out_channels, kernel_size, stride, padding, bias=not batch_norm))
 
         if batch_norm:
             layers.append(nn.BatchNorm2d(out_channels))
 
         if activation:
-            layers.append(activation())
+            layers.append(activation)
 
         if dropout > 0.:
             layers.append(nn.Dropout(dropout))
@@ -37,12 +37,12 @@ class TransposeConvBlock(nn.Module):
         super().__init__()
         layers = []
         
-        self.convT = nn.ConvTranspose2d(in_channels, out_channels, kernel_size, stride, padding, out_padding, bias=True)
+        self.convT = nn.ConvTranspose2d(in_channels, out_channels, kernel_size, stride, padding, out_padding, bias=not norm)
         layers.append(self.convT)
 
         if norm:
             self.norm = True
-            layers.append(nn.InstanceNorm2d(out_channels))
+            layers.append(nn.BatchNorm2d(out_channels))
 
         if activation:
             layers.append(activation())
@@ -62,24 +62,21 @@ class Discriminator(nn.Module):
     def __init__(self):
         super().__init__()
 
-        self.conv1 = ConvBlock(1, 32, 3, 1, 1) # 28
-        # layers.append(nn.functional.max_pool2d(2)) # 14
-        self.conv2 = ConvBlock(32, 32, 3, 1, 1) # 14
-        # layers.append(nn.functional.max_pool2d(2))  # 7
-        self.conv3 = ConvBlock(32, 16, 3, 1, 1) # 7
-        # self.featureBlock = nn.Sequential(*layers)
+        layers = []
+        layers.append(ConvBlock(1, 32, 3, 1, 1, nn.LeakyReLU(0.2), True, 0.2)) # 28
+        layers.append(nn.MaxPool2d(2, 2))
+        layers.append(ConvBlock(32, 64, 3, 1, 1, nn.LeakyReLU(0.2), True, 0.2)) # 14
+        layers.append(nn.MaxPool2d(2, 2))
+        layers.append(ConvBlock(64, 8, 3, 1, 1, nn.LeakyReLU(0.2))) # 7
+        self.featureBlock = nn.Sequential(*layers)
 
         layers = []
-        layers.append(nn.Linear(16 * 7 * 7, 1))
+        layers.append(nn.Linear(8 * 7 * 7, 1))
         layers.append(nn.Sigmoid())
         self.fc = nn.Sequential(*layers)
 
     def forward(self, x):
-        x = self.conv1(x)
-        x = nn.functional.max_pool2d(x, 2)
-        x = self.conv2(x)
-        x = nn.functional.max_pool2d(x, 2)
-        x = self.conv3(x)
+        x = self.featureBlock(x)
 
         x = x.reshape(x.shape[0], -1)
         x = self.fc(x)
@@ -92,11 +89,11 @@ class Generator(nn.Module):
         super().__init__()
         layers = []
 
-        block = TransposeConvBlock(1, 32, 5, 1, 0, 0, nn.ReLU, True)  # 14
+        block = TransposeConvBlock(1, 32, 3, 1, 0, 0, nn.ReLU, True, 0.2)  # 12
         layers.append(block)
-        block = TransposeConvBlock(32, 64, 7, 1, 0, 0, nn.ReLU, True)  # 20
+        block = TransposeConvBlock(32, 64, 3, 2, 0, 1, nn.ReLU, True, 0.2)  # 24
         layers.append(block)
-        block = TransposeConvBlock(64, 1, 9, 1, 0, 0, nn.ReLU, True)  # 28
+        block = TransposeConvBlock(64, 1, 3, 1, 0, 0, nn.ReLU, True)  # 28
         layers.append(block)
 
         self.sequence = nn.Sequential(*layers)
@@ -119,7 +116,7 @@ def createOnehot2DSeed(class_indexes, classes_num):
     # seed = torch.concat([seed, onehot], dim=1)
     return seed
 
-def show_plt(generator, num_of_classes):
+def show_plt(generator, num_of_classes, save_path = None):
     fig, axes = plt.subplots(1, num_of_classes, figsize=(15, 6))  # 2행 5열 격자 생성
 
     classes = [v for v in range(num_of_classes)]
@@ -137,24 +134,28 @@ def show_plt(generator, num_of_classes):
         ax.axis('off')  # 축 숨기기
 
     plt.tight_layout()
-    plt.show()
+
+    if save_path != None:
+        plt.savefig(save_path)
+    else:
+        plt.show()
 
 
 if __name__ == "__main__":
-    # block1 = TransposeConvBlock(10,2, 4, 5, 1, 0, 0) # 14
-    # block2 = TransposeConvBlock(4, 8, 5, 1, 0, 0) # 18
-    # block3 = TransposeConvBlock(8, 16, 5, 1, 0, 0) # 22
-    # block4 = TransposeConvBlock(16, 16, 5, 1, 0, 0) # 26
-    # block5 = TransposeConvBlock(16, 1, 5, 1, 1, 0)  # 28
+    block1 = TransposeConvBlock(1, 32, 3, 1, 0, 0, nn.ReLU, True) # 12
+    block2 = TransposeConvBlock(32, 64, 3, 2, 0, 1, nn.ReLU, True) # 26
+    block3 = TransposeConvBlock(64, 1, 3, 1, 0, 0, nn.ReLU, True) # 28
     seed = createOnehot2DSeed([2], 10)
-    print(seed.shape)
+    # print(seed.shape)
 
-    # out = block1(seed)
-    # out = block2(out)
-    # out = block3(out)
+    out = block1(seed)
+    print(out.shape)
+    out = block2(out)
+    print(out.shape)
+    out = block3(out)
     # out = block4(out)
     # out = block5(out)
-    # print(out.shape)
+    print(out.shape)
 
     model = Generator()
     images = model(seed)
