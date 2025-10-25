@@ -8,7 +8,7 @@ from torchvision import transforms, datasets
 
 import numpy as np
 
-from WGAN import WassersteinLoss, Discriminator, Generator, createOnehotSeed, show_plt
+from WGANGP import WassersteinLoss, GradientPenaltyLoss, Discriminator, Generator, createOnehotSeed, show_plt, RandomWeightedAverage
 
 
 logging.basicConfig(filename='log/train.log', level=logging.INFO)
@@ -40,8 +40,6 @@ def load_train_state(file_path, gen, disc):
 
 
 def train(generator, discriminator, criterion, genr_optimizer, disc_optimizer, start_epoch=1, num_epochs=40, avg_gen_loss = None, avg_dis_loss = None):
-
-
     train_dataset = datasets.MNIST(root = "../data/",
                                    train = True,
                                    transform = transforms.ToTensor())
@@ -49,7 +47,11 @@ def train(generator, discriminator, criterion, genr_optimizer, disc_optimizer, s
     loader = DataLoader(train_dataset, batch_size = 16, shuffle = True)
     num_classes = len(train_dataset.classes)
 
-    def train_step(model, x, target, criterion, optimizer, clip_threshold=None):
+    gp_criterion = GradientPenaltyLoss()
+
+    createInterImage = RandomWeightedAverage()
+
+    def train_step(model, x, target, criterion, optimizer):
         model.train()
         pred = model(x)
         pred = pred.squeeze(dim=0)
@@ -57,11 +59,6 @@ def train(generator, discriminator, criterion, genr_optimizer, disc_optimizer, s
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
-
-        if clip_threshold != None:
-            with torch.no_grad():
-                for param in model.parameters():
-                    param.data.clamp_(-clip_threshold, clip_threshold)
 
         return loss.item()
 
@@ -88,22 +85,25 @@ def train(generator, discriminator, criterion, genr_optimizer, disc_optimizer, s
             fake = -torch.ones(batch_size, 1).to(device)
 
             x = x.to(device)
-            real_loss = train_step(discriminator, x, real, criterion, disc_optimizer, 0.05)
+            real_loss = train_step(discriminator, x, real, criterion, disc_optimizer)
 
             seed = createOnehotSeed(torch.ones(int(batch_size)), num_classes).to(device)
-            x = generator(seed).detach()
-            fake_loss = train_step(discriminator, x, fake, criterion, disc_optimizer, 0.05)
+            fake_x = generator(seed).detach()
+            fake_loss = train_step(discriminator, fake_x, fake, criterion, disc_optimizer)
+
+            interX = createInterImage(x, fake_x, batch_size)
+            gp_loss = train_step(discriminator, interX, interX, gp_criterion, disc_optimizer)
 
             fake_losses.append(fake_loss)
             real_losses.append(real_loss)
             
             if step != 0 and step % 5 == 0:
                 seed = createOnehotSeed(label.reshape(-1), num_classes).to(device)
-                x = generator(seed)
-                gen_loss = train_step(discriminator, x, real, criterion, genr_optimizer)
+                fake_x = generator(seed)
+                gen_loss = train_step(discriminator, fake_x, real, criterion, genr_optimizer)
                 gen_losses.append(gen_loss)
 
-            critic_loss = (real_loss + fake_loss) * 0.5
+            critic_loss = (real_loss + fake_loss + gp_loss) / 3
             dis_losses.append(critic_loss)
 
             progress.set_postfix_str(f"Epoch {epoch}, {step + 1}/{len(loader)}, dis_loss: {np.mean(dis_losses):.04f}, gen_loss: {np.mean(gen_losses):.04f}")
@@ -170,5 +170,5 @@ def resume_train():
 
 
 if __name__ == "__main__":
-    train()
+    new_train()
     # resume_train()
