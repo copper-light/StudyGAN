@@ -151,8 +151,8 @@ def new_train():
     
     criterion = WassersteinLoss()
 
-    disc_optimizer = torch.optim.RMSprop(discriminator.parameters(), lr=0.0001)
-    genr_optimizer = torch.optim.RMSprop(generator.parameters(), lr=0.0001)
+    disc_optimizer = torch.optim.RMSprop(discriminator.parameters(), lr=0.001)
+    genr_optimizer = torch.optim.RMSprop(generator.parameters(), lr=0.001)
     
     start_epoch = 1
     
