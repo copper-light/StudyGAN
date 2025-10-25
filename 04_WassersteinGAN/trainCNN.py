@@ -25,8 +25,8 @@ print(device)
 
 
 def train():
-    lr = 0.00005
-    num_epochs = 20
+    lr = 0.0001
+    num_epochs = 40
 
     train_dataset = datasets.MNIST(root = "../data/",
                                    train = True,
@@ -70,6 +70,8 @@ def train():
     for epoch in progress:
         dis_losses = []
         gen_losses = []
+        fake_losses = []
+        real_losses = []
 
         start_time = time.time()
 
@@ -85,6 +87,9 @@ def train():
             x = generator(seed).detach()
             fake_loss = train_step(discriminator, x, fake, criterion, disc_optimizer, 0.1)
 
+            fake_losses.append(fake_loss)
+            real_losses.append(real_loss)
+            
             if step != 0 and step % 5 == 0:
                 seed = createOnehotSeed(label.reshape(-1), num_classes).to(device)
                 x = generator(seed)
@@ -95,16 +100,16 @@ def train():
             dis_losses.append(critic_loss)
 
             progress.set_postfix_str(f"{step + 1}/{len(loader)}, dis_loss: {np.mean(dis_losses):.04f}, gen_loss: {np.mean(gen_losses):.04f}")
-            if step % 1000 == 0:
-                show_plt(generator, num_classes, f'log/checkpoint_{epoch}_{step}.png')
-                logging.info(f'---- Step {step}, DiscLoss: {np.mean(dis_losses):.04f}, GenLoss: {np.mean(gen_losses):.04f}')
+            # if step % 1000 == 0:
+            #     show_plt(generator, num_classes, f'log/checkpoint_{epoch}_{step}.png')
+            #     logging.info(f'---- Step {step}, DiscLoss: {np.mean(dis_losses):.04f}, GenLoss: {np.mean(gen_losses):.04f}')
 
         elapsed = time.time() - start_time
         avg_gen_loss = np.mean(gen_losses)
         avg_dis_loss = np.mean(dis_losses)
 
         show_plt(generator, num_classes, f'log/checkpoint_{epoch}_last.png')
-        logging.info(f'Epoch {epoch}, elapsed: {elapsed}, DiscLoss: {avg_dis_loss:.04f}, GenLoss: {avg_gen_loss:.04f}')
+        logging.info(f'Epoch {epoch}, elapsed: {elapsed}, DiscLoss: {avg_dis_loss:.04f}, real:{np.mean(real_losses):.04f}, fake:{np.mean(fake_losses):.04f}, GenLoss: {avg_gen_loss:.04f}')
 
         if bestest > avg_gen_loss:
             checkpoint = {
@@ -135,4 +140,5 @@ def train():
 
 
 if __name__ == "__main__":
+    
     train()
