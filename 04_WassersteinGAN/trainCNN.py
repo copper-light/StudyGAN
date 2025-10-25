@@ -23,25 +23,31 @@ if torch.cuda.is_available():
 
 print(device)
 
+def load_train_state(file_path, gen, disc):
+    state = torch.load(file_path, weights_only=False)
+    gen.load_state_dict(state['gen_model_state_dict'])
+    disc.load_state_dict(state['disc_model_state_dict'])
 
-def train():
-    lr = 0.0001
-    num_epochs = 40
+    d_opt = torch.optim.RMSprop(disc.parameters(), lr=0.0001)
+    g_opt = torch.optim.RMSprop(gen.parameters(), lr=0.0001)
+    
+    g_opt.load_state_dict(state['gen_optimizer_state_dict'])
+    d_opt.load_state_dict(state['disc_optimizer_state_dict'])
+    avg_dis_loss = state['disc_loss']
+    avg_gen_loss = state['gen_loss']
+    epoch = state['epoch']
+    return (epoch, g_opt, d_opt, avg_gen_loss, avg_dis_loss)
+
+
+def train(generator, discriminator, criterion, genr_optimizer, disc_optimizer, start_epoch=1, num_epochs=40, avg_gen_loss = None, avg_dis_loss = None):
+    
 
     train_dataset = datasets.MNIST(root = "../data/",
                                    train = True,
                                    transform = transforms.ToTensor())
 
     loader = DataLoader(train_dataset, batch_size = 16, shuffle = True)
-
     num_classes = len(train_dataset.classes)
-
-    generator = Generator().to(device)
-    discriminator = Discriminator().to(device)
-
-    criterion = WassersteinLoss()
-    disc_optimizer = torch.optim.RMSprop(discriminator.parameters(), lr=lr)
-    genr_optimizer = torch.optim.RMSprop(generator.parameters(), lr=lr)
 
     def train_step(model, x, target, criterion, optimizer, clip_threshold=None):
         model.train()
@@ -54,19 +60,20 @@ def train():
 
         if clip_threshold != None:
             with torch.no_grad():
-                for layers in model.children():
-                    for l in layers:
-                        if hasattr(l, "weight"):
-                            l.weight.copy_(torch.clip(l.weight, -clip_threshold, clip_threshold))
+                for param in model.parameters():
+                    param.data.clamp_(-clip_threshold, clip_threshold)
 
         return loss.item()
 
-
     bestest = float('inf')
-    progress = tqdm(range(1, num_epochs + 1))
+    if avg_gen_loss is not None:
+        bestest = np.min(avg_gen_loss)
+    else:
+        avg_gen_loss = []
+        avg_dis_loss = []
+    
+    progress = tqdm(range(start_epoch, start_epoch + num_epochs))
 
-    avg_gen_loss = None
-    avg_dis_loss = None
     for epoch in progress:
         dis_losses = []
         gen_losses = []
@@ -81,11 +88,11 @@ def train():
             fake = -torch.ones(batch_size, 1).to(device)
 
             x = x.to(device)
-            real_loss = train_step(discriminator, x, real, criterion, disc_optimizer, 0.1)
+            real_loss = train_step(discriminator, x, real, criterion, disc_optimizer, 0.05)
 
             seed = createOnehotSeed(torch.ones(int(batch_size)), num_classes).to(device)
             x = generator(seed).detach()
-            fake_loss = train_step(discriminator, x, fake, criterion, disc_optimizer, 0.1)
+            fake_loss = train_step(discriminator, x, fake, criterion, disc_optimizer, 0.05)
 
             fake_losses.append(fake_loss)
             real_losses.append(real_loss)
@@ -99,7 +106,7 @@ def train():
             critic_loss = (real_loss + fake_loss) * 0.5
             dis_losses.append(critic_loss)
 
-            progress.set_postfix_str(f"{step + 1}/{len(loader)}, dis_loss: {np.mean(dis_losses):.04f}, gen_loss: {np.mean(gen_losses):.04f}")
+            progress.set_postfix_str(f"Epoch {epoch}, {step + 1}/{len(loader)}, dis_loss: {np.mean(dis_losses):.04f}, gen_loss: {np.mean(gen_losses):.04f}")
             # if step % 1000 == 0:
             #     show_plt(generator, num_classes, f'log/checkpoint_{epoch}_{step}.png')
             #     logging.info(f'---- Step {step}, DiscLoss: {np.mean(dis_losses):.04f}, GenLoss: {np.mean(gen_losses):.04f}')
@@ -138,7 +145,32 @@ def train():
     generator.eval()
     show_plt(generator, 10)
 
+def new_train():
+    generator = Generator().to(device)
+    discriminator = Discriminator().to(device)
+    
+    criterion = WassersteinLoss()
+
+    disc_optimizer = torch.optim.RMSprop(discriminator.parameters(), lr=0.0001)
+    genr_optimizer = torch.optim.RMSprop(generator.parameters(), lr=0.0001)
+    
+    start_epoch = 1
+    
+    train(generator, discriminator, criterion, genr_optimizer, disc_optimizer, num_epochs=60)
+
+def resume_train():
+    generator = Generator().to(device)
+    discriminator = Discriminator().to(device)
+    
+    criterion = WassersteinLoss()
+    
+    epoch, genr_optimizer, disc_optimizer, gen_losses, dis_losses = load_train_state("log/latest.pth", generator, discriminator)
+    
+    train(generator, discriminator, criterion, genr_optimizer, disc_optimizer, start_epoch=epoch+1, num_epochs=40, avg_gen_loss = gen_losses, avg_dis_loss = dis_losses)
+    
 
 if __name__ == "__main__":
-    
-    train()
+    # train()
+
+    # lr = 0.0001
+    resume_train()
