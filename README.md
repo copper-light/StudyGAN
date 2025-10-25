@@ -8,7 +8,7 @@
 ### 2. Conditional GAN
 * Linear Layer 기반의 조건(생성할 클래스 지정) GAN
 
-### 3. CNN GAN
+### 3. DCGAN (Deep Convolution GAN)
 * CNN 으로 만든 GAN
   * 배운 것
     * seed 값을 생성할때, 직접 2d 매트릭스에 해당하는 값을 생성했는데, linear하게 만들어내고 2d로 변환하는 것은 모델에게 학습하도록 하는것이 매우 결정적인 로직임

@@ -59,10 +59,6 @@ def train():
                         if hasattr(l, "weight"):
                             l.weight.copy_(torch.clip(l.weight, -clip_threshold, clip_threshold))
 
-                    # weights = param.weight
-                    # weights = [torch.clip(w, -clip_threshold, clip_threshold) for w in weights]
-                    # param._cop
-
         return loss.item()
 
 
@@ -83,11 +79,11 @@ def train():
             fake = -torch.ones(batch_size, 1).to(device)
 
             x = x.to(device)
-            real_loss = train_step(discriminator, x, real, criterion, disc_optimizer, 0.01)
+            real_loss = train_step(discriminator, x, real, criterion, disc_optimizer, 0.1)
 
             seed = createOnehotSeed(torch.ones(int(batch_size)), num_classes).to(device)
             x = generator(seed).detach()
-            fake_loss = train_step(discriminator, x, fake, criterion, disc_optimizer, 0.01)
+            fake_loss = train_step(discriminator, x, fake, criterion, disc_optimizer, 0.1)
 
             if step != 0 and step % 5 == 0:
                 seed = createOnehotSeed(label.reshape(-1), num_classes).to(device)
@@ -95,8 +91,8 @@ def train():
                 gen_loss = train_step(discriminator, x, real, criterion, genr_optimizer)
                 gen_losses.append(gen_loss)
 
-            dis_losses.append(real_loss)
-            dis_losses.append(fake_loss)
+            critic_loss = (real_loss + fake_loss) * 0.5
+            dis_losses.append(critic_loss)
 
             progress.set_postfix_str(f"{step + 1}/{len(loader)}, dis_loss: {np.mean(dis_losses):.04f}, gen_loss: {np.mean(gen_losses):.04f}")
             if step % 1000 == 0:
