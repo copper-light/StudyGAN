@@ -39,13 +39,13 @@ class Discriminator(nn.Module):
         self.feature = nn.Sequential(
             # 28
             nn.Conv2d(1, 64, kernel_size=5, stride=2, padding=2, bias=False),
-            nn.BatchNorm2d(64),
+            # nn.BatchNorm2d(64),
             nn.LeakyReLU(0.2),
             nn.Dropout(0.5),
 
             # 14
             nn.Conv2d(64, 64, kernel_size=3, stride=2, padding=1, bias=False),
-            nn.BatchNorm2d(64),
+            # nn.BatchNorm2d(64),
             nn.LeakyReLU(0.2),
             nn.Dropout(0.5),
 

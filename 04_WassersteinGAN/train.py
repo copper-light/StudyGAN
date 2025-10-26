@@ -1,6 +1,7 @@
 import torch
 from torch import nn
 from tqdm import tqdm
+from matplotlib import pyplot as plt
 
 def createSeed(class_indexes, classes_num=None, output_dim=100):
     seed = torch.randn(len(class_indexes), output_dim)
@@ -27,6 +28,30 @@ def randomWeightedAverage(a, b, batch_size, device):
     interpolated = (alpha * a) + ((1 - alpha) * b)
     interpolated = torch.tensor(interpolated, requires_grad=True)
     return interpolated
+
+
+def show_plt(generator, num_of_classes, save_path = None):
+    fig, axes = plt.subplots(1, num_of_classes, figsize=(15, 6))  # 2행 5열 격자 생성
+
+    classes = torch.tensor([v for v in range(num_of_classes)])
+
+    seed = createSeed(classes).to('cuda')
+    images = generator(seed)
+
+    for i in range(num_of_classes):
+        ax = axes[i]
+        image = images[i].reshape(28, 28).cpu()
+
+        # 예시로 각 그림에 숫자 표시
+        ax.imshow(image.detach().numpy(), cmap='gray')
+        ax.axis('off')  # 축 숨기기
+
+    plt.tight_layout()
+
+    if save_path != None:
+        plt.savefig(save_path)
+
+    plt.show()
 
 
 class Trainer():
@@ -83,6 +108,7 @@ class Trainer():
         self.progress = tqdm(range(num_epochs))
         for epoch in self.progress:
             self._epoch(epoch, dataloader)
+            show_plt(self.G, 10, f'log/checkpoint_{epoch}_last.png')
 
 if __name__ == "__main__":
     import torchvision.transforms as transforms
@@ -92,7 +118,7 @@ if __name__ == "__main__":
 
     lr = 1e-4
     batch_size = 64
-    epochs = 1
+    epochs = 40
 
     g = Generator()
     d = Discriminator()
