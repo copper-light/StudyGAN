@@ -27,7 +27,7 @@ def gradient_penalty(pred, img, device):
 def randomWeightedAverage(a, b, batch_size, device):
     alpha = torch.rand(batch_size, 1, 1, 1).to(device)
     interpolated = (alpha * a.detach()) + ((1 - alpha) * b.detach())
-    # interpolated = torch.tensor(interpolated, requires_grad=True)
+    interpolated.requires_grad_(True)
     return interpolated
 
 
@@ -57,7 +57,6 @@ class Trainer():
         self.G_optimizer = g_optimizer
         self.D_optimizer = d_optimizer
         self.device = device
-        self.progress = None
         self.gp_weight = gp_weight
         self.train_gen_per_iter = train_gen_per_iter
         self.step = 0
@@ -100,7 +99,9 @@ class Trainer():
     def _epoch(self, epoch, dataloader):
         g_losses = []
         d_losses = []
-        for step, (x, y) in enumerate(dataloader):
+
+        progress = tqdm(enumerate(dataloader))
+        for step, (x, y) in progress:
             self.step += 1
             x = x.to(self.device)
             d_loss = self._iter_d(x, y)
@@ -109,12 +110,12 @@ class Trainer():
                 g_loss = self._iter_g(x, y)
                 g_losses.append(g_loss)
 
-            self.progress.set_postfix({'step': self.step, 'd_loss': np.mean(d_losses), 'g_loss': np.mean(g_losses)})
+            progress.set_postfix({'epoch':epoch, 'step': self.step, 'd_loss': np.mean(d_losses), 'g_loss': np.mean(g_losses)})
 
     def train(self, dataloader, num_epochs,  log_path="log"):
         num_classes = len(dataloader.dataset.classes)
-        self.progress = tqdm(range(num_epochs))
-        for epoch in self.progress:
+
+        for epoch in range(num_epochs):
             self._epoch(epoch, dataloader)
 
             classes = torch.tensor([v for v in range(num_classes)])
