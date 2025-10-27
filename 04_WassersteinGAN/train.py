@@ -1,7 +1,10 @@
 import torch
+import numpy as np
 from torch import nn
 from tqdm import tqdm
 from matplotlib import pyplot as plt
+
+# https://github.com/EmilienDupont/wgan-gp/blob/master/training.py
 
 def createSeed(class_indexes, classes_num=None, output_dim=100):
     seed = torch.randn(len(class_indexes), output_dim)
@@ -17,28 +20,21 @@ def gradient_penalty(pred, img, device):
                                     create_graph=True, retain_graph=True, only_inputs=True)[0]
 
     gradients = gradients.view(pred.size(0), -1)
-    # l2_norm = ((gradients.norm(2, dim=1) - 1) ** 2).mean()
     l2_norm = torch.sqrt(torch.sum(gradients ** 2, dim=1) + 1e-12)
-    gradient_penalty = torch.mean((1 - l2_norm) ** 2)
-    return gradient_penalty
+    return torch.mean((1 - l2_norm) ** 2)
 
 
 def randomWeightedAverage(a, b, batch_size, device):
     alpha = torch.rand(batch_size, 1, 1, 1).to(device)
-    interpolated = (alpha * a) + ((1 - alpha) * b)
-    interpolated = torch.tensor(interpolated, requires_grad=True)
+    interpolated = (alpha * a.detach()) + ((1 - alpha) * b.detach())
+    # interpolated = torch.tensor(interpolated, requires_grad=True)
     return interpolated
 
 
-def show_plt(generator, num_of_classes, save_path = None):
-    fig, axes = plt.subplots(1, num_of_classes, figsize=(15, 6))  # 2행 5열 격자 생성
+def show_plt(images, col_size, save_path = None):
+    fig, axes = plt.subplots(1, col_size, figsize=(15, 6))  # 2행 5열 격자 생성
 
-    classes = torch.tensor([v for v in range(num_of_classes)])
-
-    seed = createSeed(classes).to('cuda')
-    images = generator(seed)
-
-    for i in range(num_of_classes):
+    for i in range(col_size):
         ax = axes[i]
         image = images[i].reshape(28, 28).cpu()
 
@@ -55,19 +51,23 @@ def show_plt(generator, num_of_classes, save_path = None):
 
 
 class Trainer():
-    def __init__(self, generator, critic, g_optimizer, d_optimizer, device):
+    def __init__(self, generator, critic, g_optimizer, d_optimizer, device, train_gen_per_iter = 5, gp_weight = 10):
         self.G = generator.to(device)
         self.D = critic.to(device)
         self.G_optimizer = g_optimizer
         self.D_optimizer = d_optimizer
         self.device = device
         self.progress = None
+        self.gp_weight = gp_weight
+        self.train_gen_per_iter = train_gen_per_iter
+        self.step = 0
 
     def _iter_g(self, x, y):
         self.G.train()
         self.G.zero_grad()
         seed = createSeed(y).to(self.device)
-        pred = self.G(seed)
+        fake_x = self.G(seed).detach()
+        pred = self.D(fake_x)
 
         loss = -torch.mean(pred)
         loss.backward()
@@ -90,7 +90,7 @@ class Trainer():
         inter_pred = self.D(inter_x)
         penalty_loss = gradient_penalty(inter_pred, inter_x, self.device)
 
-        loss = torch.mean(real_pred) - torch.mean(fake_pred) + penalty_loss
+        loss = torch.mean(real_pred) - torch.mean(fake_pred) + (self.gp_weight * penalty_loss)
 
         loss.backward()
         self.D_optimizer.step()
@@ -98,17 +98,29 @@ class Trainer():
         return loss.item()
 
     def _epoch(self, epoch, dataloader):
+        g_losses = []
+        d_losses = []
         for step, (x, y) in enumerate(dataloader):
+            self.step += 1
             x = x.to(self.device)
             d_loss = self._iter_d(x, y)
-            g_loss = self._iter_g(x, y)
-            self.progress.set_postfix({'d_loss': d_loss, 'g_loss': g_loss})
+            d_losses.append(d_loss)
+            if step % self.train_gen_per_iter == 0:
+                g_loss = self._iter_g(x, y)
+                g_losses.append(g_loss)
 
-    def train(self, dataloader, num_epochs, log="log/"):
+            self.progress.set_postfix({'step': self.step, 'd_loss': np.mean(d_losses), 'g_loss': np.mean(g_losses)})
+
+    def train(self, dataloader, num_epochs,  log_path="log"):
+        num_classes = len(dataloader.dataset.classes)
         self.progress = tqdm(range(num_epochs))
         for epoch in self.progress:
             self._epoch(epoch, dataloader)
-            show_plt(self.G, 10, f'log/checkpoint_{epoch}_last.png')
+
+            classes = torch.tensor([v for v in range(num_classes)])
+            seed = createSeed(classes).to(device)
+            images = self.G(seed)
+            show_plt(images, num_classes, f'{log_path}/checkpoint_{epoch}_last.png')
 
 if __name__ == "__main__":
     import torchvision.transforms as transforms
@@ -136,5 +148,5 @@ if __name__ == "__main__":
     if torch.cuda.is_available():
         device = 'cuda'
 
-    trainer = Trainer(g, d, g_optimizer, d_optimizer, device)
-    trainer.train(dataloader, epochs, 'log')
+    trainer = Trainer(g, d, g_optimizer, d_optimizer, device, gp_weight= 10)
+    trainer.train(dataloader, epochs, log_path = 'log/')
