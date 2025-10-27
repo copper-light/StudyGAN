@@ -14,20 +14,20 @@ def createSeed(class_indexes, classes_num=None, output_dim=100):
     return seed
 
 def gradient_penalty(pred, img, device):
-    gradients = torch.autograd.grad(outputs = pred,
-                                    inputs = img,
+    gradients = torch.autograd.grad(outputs = pred, inputs = img,
                                     grad_outputs=torch.ones(pred.size()).to(device),
                                     create_graph=True, retain_graph=True, only_inputs=True)[0]
 
     gradients = gradients.view(pred.size(0), -1)
     l2_norm = torch.sqrt(torch.sum(gradients ** 2, dim=1) + 1e-12)
-    return torch.mean((1 - l2_norm) ** 2)
+    return torch.mean((l2_norm - 1) ** 2)
 
 
-def randomWeightedAverage(a, b, device):
-    batch_size = a.size()[0]
+def randomWeightedAverage(real_x, fake_x, device):
+    batch_size = real_x.size()[0]
     alpha = torch.rand(batch_size, 1, 1, 1).to(device)
-    interpolated = (alpha * a) + ((1 - alpha) * b).detach()
+    alpha = alpha.expand_as(real_x)
+    interpolated = (alpha * real_x.data) + ((1 - alpha) * fake_x.data)
     interpolated.requires_grad_(True)
     return interpolated
 
@@ -137,7 +137,7 @@ if __name__ == "__main__":
 
     lr = 1e-4
     betas = (.9, .99)
-    batch_size = 4
+    batch_size = 128
     epochs = 40
 
     g = Generator()
@@ -146,10 +146,7 @@ if __name__ == "__main__":
     g_optimizer = torch.optim.Adam(g.parameters(), lr=lr, betas=betas)
     d_optimizer = torch.optim.Adam(d.parameters(), lr=lr, betas=betas)
 
-    train_dataset = datasets.MNIST(root="../data/",
-                                   train=True,
-                                   transform=transforms.ToTensor())
-
+    train_dataset = datasets.MNIST(root="../data/", train=True, transform=transforms.ToTensor())
     dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
 
     device = 'cpu'
