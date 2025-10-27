@@ -24,9 +24,10 @@ def gradient_penalty(pred, img, device):
     return torch.mean((1 - l2_norm) ** 2)
 
 
-def randomWeightedAverage(a, b, batch_size, device):
+def randomWeightedAverage(a, b, device):
+    batch_size = a.size()[0]
     alpha = torch.rand(batch_size, 1, 1, 1).to(device)
-    interpolated = (alpha * a.detach()) + ((1 - alpha) * b.detach())
+    interpolated = (alpha * a) + ((1 - alpha) * b).detach()
     interpolated.requires_grad_(True)
     return interpolated
 
@@ -60,23 +61,23 @@ class Trainer():
         self.gp_weight = gp_weight
         self.train_gen_per_iter = train_gen_per_iter
         self.step = 0
+        self.losses = {'G':[], 'D':[], 'GP':[]}
 
     def _iter_g(self, x, y):
         self.G.train()
-        self.G.zero_grad()
         seed = createSeed(y).to(self.device)
-        fake_x = self.G(seed).detach()
+        fake_x = self.G(seed)
         pred = self.D(fake_x)
 
         loss = -torch.mean(pred)
+
+        self.G_optimizer.zero_grad()
         loss.backward()
         self.G_optimizer.step()
         return loss.item()
 
     def _iter_d(self, x, y):
-        batch_size = x.shape[0]
         self.D.train()
-        self.D.zero_grad()
 
         x = x.to(self.device)
         real_pred = self.D(x)
@@ -85,12 +86,15 @@ class Trainer():
         fake_x = self.G(seed).detach()
         fake_pred = self.D(fake_x)
 
-        inter_x = randomWeightedAverage(x, fake_x, batch_size, self.device)
+        inter_x = randomWeightedAverage(x, fake_x, self.device)
         inter_pred = self.D(inter_x)
         penalty_loss = gradient_penalty(inter_pred, inter_x, self.device)
 
         loss = torch.mean(real_pred) - torch.mean(fake_pred) + (self.gp_weight * penalty_loss)
+        self.losses['GP'].append(penalty_loss.item())
 
+        # print(torch.mean(real_pred).item(), torch.mean(fake_pred).item())
+        self.D_optimizer.zero_grad()
         loss.backward()
         self.D_optimizer.step()
 
@@ -110,7 +114,8 @@ class Trainer():
                 g_loss = self._iter_g(x, y)
                 g_losses.append(g_loss)
 
-            progress.set_postfix({'epoch':epoch + 1, 'step': self.step, 'd_loss': np.mean(d_losses), 'g_loss': np.mean(g_losses)})
+            gp_loss = self.losses['GP'][-100:]
+            progress.set_postfix({'epoch':epoch + 1, 'step': self.step, 'd_loss': np.mean(d_losses), 'gp_loss': np.mean(gp_loss), 'g_loss': np.mean(g_losses)})
 
     def train(self, dataloader, num_epochs,  log_path="log"):
         num_classes = len(dataloader.dataset.classes)
@@ -132,7 +137,7 @@ if __name__ == "__main__":
 
     lr = 1e-4
     betas = (.9, .99)
-    batch_size = 16
+    batch_size = 4
     epochs = 40
 
     g = Generator()
