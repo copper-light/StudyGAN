@@ -40,19 +40,21 @@ class Discriminator(nn.Module):
             # 28
             nn.Conv2d(1, 64, kernel_size=5, stride=2, padding=2, bias=False),
             # nn.BatchNorm2d(64),
-            nn.LeakyReLU(0.2),
-            nn.Dropout(0.5),
+            nn.InstanceNorm2d(64),
+            nn.LeakyReLU(0.2, inplace=True),
+            # nn.Dropout(0.5),
 
             # 14
             nn.Conv2d(64, 64, kernel_size=3, stride=2, padding=1, bias=False),
             # nn.BatchNorm2d(64),
-            nn.LeakyReLU(0.2),
-            nn.Dropout(0.5),
+            nn.InstanceNorm2d(64),
+            nn.LeakyReLU(0.2, inplace=True),
+            # nn.Dropout(0.5),
 
             # 7
             nn.Conv2d(64, 1, kernel_size=3, stride=1, padding=1, bias=True),
-            nn.LeakyReLU(0.2),
-            nn.Dropout(0.5),
+            nn.LeakyReLU(0.2, inplace=True),
+            # nn.Dropout(0.5),
         )
         self.fc = nn.Sequential(
             nn.Linear(7 * 7 * 1, 1),
@@ -81,17 +83,17 @@ class Generator(nn.Module):
             # 7 -> 14
             nn.ConvTranspose2d(64, 128, kernel_size=3, stride=2, padding=1, output_padding=1, bias=False),
             nn.BatchNorm2d(128),
-            nn.LeakyReLU(0.2),
+            nn.ReLU(True),
 
             # 14 -> 28
             nn.ConvTranspose2d(128, 64, kernel_size=3, stride=2, padding=1, output_padding=1, bias=False),
             nn.BatchNorm2d(64),
-            nn.LeakyReLU(0.2),
+            nn.ReLU(True),
 
             # 28 -> 28
             nn.Conv2d(64, 1, kernel_size=3, stride=1, padding=1, bias=False),
             nn.BatchNorm2d(1),
-            nn.Sigmoid() # tanh 와 비교해볼 필요 있음 -> 이미지에서 tanh
+            nn.Tanh() # tanh 와 비교해볼 필요 있음 -> 이미지에서 tanh
         )
 
     def forward(self, x):

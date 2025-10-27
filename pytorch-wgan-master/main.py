@@ -9,6 +9,7 @@ from models.wgan_gradient_penalty import WGAN_GP
 
 def main(args):
     model = None
+    print(args.model)
     if args.model == 'GAN':
         model = GAN(args)
     elif args.model == 'DCGAN':
@@ -25,7 +26,7 @@ def main(args):
     #feature_extraction = FeatureExtractionTest(train_loader, test_loader, args.cuda, args.batch_size)
 
     # Start model training
-    if args.is_train == 'True':
+    if args.is_train == True:
         model.train(train_loader)
 
     # start evaluating on test data
@@ -37,11 +38,6 @@ def main(args):
 
 if __name__ == '__main__':
     args = parse_args()
-    args.model = 'WGAN-GP'
-    args.is_train = True
-    args.epochs = 1
-    args.batch_size = 16
-    args.dataset = 'MNIST'
 
     print(args.cuda)
     main(args)

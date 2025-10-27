@@ -19,7 +19,7 @@ def gradient_penalty(pred, img, device):
                                     create_graph=True, retain_graph=True, only_inputs=True)[0]
 
     gradients = gradients.view(pred.size(0), -1)
-    l2_norm = torch.sqrt(torch.sum(gradients ** 2, dim=1) + 1e-12)
+    l2_norm = torch.sqrt((gradients ** 2).sum(dim=1) + 1e-12)
     return torch.mean((l2_norm - 1) ** 2)
 
 
@@ -38,6 +38,7 @@ def show_plt(images, col_size, save_path = None):
     for i in range(col_size):
         ax = axes[i]
         image = images[i].reshape(28, 28).cpu()
+        image = image * 0.5 + 0.5
 
         # 예시로 각 그림에 숫자 표시
         ax.imshow(image.detach().numpy(), cmap='gray')
@@ -70,7 +71,6 @@ class Trainer():
         pred = self.D(fake_x)
 
         loss = -torch.mean(pred)
-
         self.G_optimizer.zero_grad()
         loss.backward()
         self.G_optimizer.step()
@@ -78,6 +78,7 @@ class Trainer():
 
     def _iter_d(self, x, y):
         self.D.train()
+        self.D_optimizer.zero_grad()
 
         x = x.to(self.device)
         real_pred = self.D(x)
@@ -90,13 +91,11 @@ class Trainer():
         inter_pred = self.D(inter_x)
         penalty_loss = gradient_penalty(inter_pred, inter_x, self.device)
 
-        loss = torch.mean(real_pred) - torch.mean(fake_pred) + (self.gp_weight * penalty_loss)
-        self.losses['GP'].append(penalty_loss.item())
-
-        # print(torch.mean(real_pred).item(), torch.mean(fake_pred).item())
-        self.D_optimizer.zero_grad()
+        loss = fake_pred.mean() - real_pred.mean() + (self.gp_weight * penalty_loss)
         loss.backward()
         self.D_optimizer.step()
+
+        self.losses['GP'].append(penalty_loss.item())
 
         return loss.item()
 
@@ -136,9 +135,9 @@ if __name__ == "__main__":
     from WGANGP import Generator, Discriminator
 
     lr = 1e-4
-    betas = (.9, .99)
-    batch_size = 128
-    epochs = 40
+    betas = (.5, .999)
+    batch_size = 32
+    epochs = 80
 
     g = Generator()
     d = Discriminator()
@@ -146,7 +145,12 @@ if __name__ == "__main__":
     g_optimizer = torch.optim.Adam(g.parameters(), lr=lr, betas=betas)
     d_optimizer = torch.optim.Adam(d.parameters(), lr=lr, betas=betas)
 
-    train_dataset = datasets.MNIST(root="../data/", train=True, transform=transforms.ToTensor())
+    transforms = transforms.Compose([
+        transforms.ToTensor(),
+        transforms.Normalize(0.5, 0.5)
+    ])
+
+    train_dataset = datasets.MNIST(root="../data/", train=True, transform=transforms)
     dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
 
     device = 'cpu'
