@@ -55,7 +55,7 @@ class Discriminator(nn.Module):
             nn.Dropout(0.5),
         )
         self.fc = nn.Sequential(
-            nn.Linear(7 * 7 * 1, 1)
+            nn.Linear(7 * 7 * 1, 1),
             # nn.Sigmoid()
         )
 
@@ -98,37 +98,6 @@ class Generator(nn.Module):
         x = self.input(x)
         x = x.view(x.size(0), 64, 7, 7)
         return self.feature(x)
-
-
-def createSeed(class_indexes, classes_num=None, output_dim=100):
-    seed = torch.randn(len(class_indexes), output_dim)
-    if classes_num is not None:
-        onehot = nn.functional.one_hot(class_indexes, classes_num)
-        seed = torch.concat([seed, onehot], dim=1)
-    return seed
-
-def show_plt(generator, num_of_classes, save_path = None):
-    fig, axes = plt.subplots(1, num_of_classes, figsize=(15, 6))  # 2행 5열 격자 생성
-
-    classes = [v for v in range(num_of_classes)]
-
-    seed = createSeed(classes, num_of_classes).to(device)
-    images = generator(seed)
-
-    for i in range(num_of_classes):
-        ax = axes[i]
-        image = images[i].reshape(28, 28).cpu()
-
-        # 예시로 각 그림에 숫자 표시
-        ax.imshow(image.detach().numpy(), cmap='gray')
-        ax.axis('off')  # 축 숨기기
-
-    plt.tight_layout()
-
-    if save_path != None:
-        plt.savefig(save_path)
-
-    plt.show()
 
 
 if __name__ == '__main__':

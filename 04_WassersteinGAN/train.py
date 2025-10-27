@@ -110,7 +110,7 @@ class Trainer():
                 g_loss = self._iter_g(x, y)
                 g_losses.append(g_loss)
 
-            progress.set_postfix({'epoch':epoch, 'step': self.step, 'd_loss': np.mean(d_losses), 'g_loss': np.mean(g_losses)})
+            progress.set_postfix({'epoch':epoch + 1, 'step': self.step, 'd_loss': np.mean(d_losses), 'g_loss': np.mean(g_losses)})
 
     def train(self, dataloader, num_epochs,  log_path="log"):
         num_classes = len(dataloader.dataset.classes)
@@ -123,6 +123,7 @@ class Trainer():
             images = self.G(seed)
             show_plt(images, num_classes, f'{log_path}/checkpoint_{epoch}_last.png')
 
+
 if __name__ == "__main__":
     import torchvision.transforms as transforms
     import torchvision.datasets as datasets
@@ -130,14 +131,15 @@ if __name__ == "__main__":
     from WGANGP import Generator, Discriminator
 
     lr = 1e-4
-    batch_size = 64
+    betas = (.9, .99)
+    batch_size = 16
     epochs = 40
 
     g = Generator()
     d = Discriminator()
 
-    g_optimizer = torch.optim.Adam(g.parameters(), lr=lr)
-    d_optimizer = torch.optim.Adam(d.parameters(), lr=lr)
+    g_optimizer = torch.optim.Adam(g.parameters(), lr=lr, betas=betas)
+    d_optimizer = torch.optim.Adam(d.parameters(), lr=lr, betas=betas)
 
     train_dataset = datasets.MNIST(root="../data/",
                                    train=True,
