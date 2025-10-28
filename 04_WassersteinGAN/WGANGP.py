@@ -70,6 +70,7 @@ class Discriminator(nn.Module):
 class Generator(nn.Module):
 
     def __init__(self):
+
         super().__init__()
 
         self.input = nn.Sequential(

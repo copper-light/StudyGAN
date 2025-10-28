@@ -19,7 +19,7 @@ betas = (.9, .99)
 G_optimizer = optim.Adam(generator.parameters(), lr=lr, betas=betas)
 D_optimizer = optim.Adam(discriminator.parameters(), lr=lr, betas=betas)
 
-# Train model
+# Train models
 epochs = 2
 trainer = Trainer(generator, discriminator, G_optimizer, D_optimizer,
                   use_cuda=torch.cuda.is_available())

@@ -54,7 +54,7 @@ from training import Trainer
 trainer = Trainer(generator, discriminator, G_optimizer, D_optimizer,
                   use_cuda=torch.cuda.is_available())
 
-# Train model for 200 epochs
+# Train models for 200 epochs
 trainer.train(data_loader, epochs=200, save_training_gif=True)
 ```
 

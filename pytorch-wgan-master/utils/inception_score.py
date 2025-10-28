@@ -32,7 +32,7 @@ def get_inception_score(imgs, cuda=True, batch_size=32, resize=False, splits=1):
     # Set up dataloader
     dataloader = torch.utils.data.DataLoader(imgs, batch_size=batch_size)
 
-    # Load inception model
+    # Load inception models
     inception_model = inception_v3(pretrained=True, transform_input=False).type(dtype)
     inception_model.eval();
     up = nn.Upsample(size=(299, 299), mode='bilinear').type(dtype)

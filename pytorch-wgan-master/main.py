@@ -25,7 +25,7 @@ def main(args):
     train_loader, test_loader = get_data_loader(args)
     #feature_extraction = FeatureExtractionTest(train_loader, test_loader, args.cuda, args.batch_size)
 
-    # Start model training
+    # Start models training
     if args.is_train == True:
         model.train(train_loader)
 

@@ -6,7 +6,7 @@ from sklearn.metrics import accuracy_score
 from sklearn.linear_model import LogisticRegression
 
 '''
-Running feature extraction part for GAN model extraction 
+Running feature extraction part for GAN models extraction 
     cifar-10    $  python main.py --dataroot datasets/cifar --dataset cifar --load_D trained_models/dcgan/cifar/discriminator.pkl --load_G trained_models/dcgan/cifar/generator.pkl
 '''
 
@@ -59,7 +59,7 @@ class FeatureExtractionTest():
 
         return x_train, y_train, x_test, y_test
 
-    # Feature extraction test #4 transfer learning Inception v3 model pretrained
+    # Feature extraction test #4 transfer learning Inception v3 models pretrained
     # Resize imaged to 224x224 for pretrained models
     def inception_feature_extraction(self):
         """
@@ -108,12 +108,12 @@ class FeatureExtractionTest():
 
         return x_train, y_train, x_test, y_test
 
-    # Feature extraction GAN model discriminator output 1024x4x4
+    # Feature extraction GAN models discriminator output 1024x4x4
     def GAN_feature_extraction(self, discriminator):
         """
-            Extract features from images with trained discriminator of GAN model.
+            Extract features from images with trained discriminator of GAN models.
             Input is image and output is flattened 16348 dimensional numpy array (1024x4x4)
-            discriminator -- Trained discriminator of GAN model
+            discriminator -- Trained discriminator of GAN models
         """
         x_train, y_train = [], []
         x_test, y_test = [], []
@@ -163,7 +163,7 @@ class FeatureExtractionTest():
             train_loader, test_loader = get_data_loader(args)
 
             x_train, y_train, x_test, y_test = feature_extraction.inception_feature_extraction()
-            # x_train, y_train, x_test, y_test = feature_extraction.GAN_feature_extraction(model.D)
+            # x_train, y_train, x_test, y_test = feature_extraction.GAN_feature_extraction(models.D)
             # x_train, y_train, x_test, y_test = feature_extraction.flatten_images()
 
             # clf = LinearSVC()

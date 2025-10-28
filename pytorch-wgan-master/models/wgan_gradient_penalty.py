@@ -89,7 +89,7 @@ class Discriminator(torch.nn.Module):
 
 class WGAN_GP(object):
     def __init__(self, args):
-        print("WGAN_GradientPenalty init model.")
+        print("WGAN_GradientPenalty init models.")
         self.G = Generator(args.channels)
         self.D = Discriminator(args.channels)
         self.C = args.channels
@@ -208,12 +208,12 @@ class WGAN_GP(object):
             g_cost = -g_loss
             self.g_optimizer.step()
             print(f'Generator iteration: {g_iter}/{self.generator_iters}, g_loss: {g_loss}')
-            # Saving model and sampling images every 1000th generator iterations
+            # Saving models and sampling images every 1000th generator iterations
             if (g_iter) % SAVE_PER_TIMES == 0:
                 self.save_model()
                 # # Workaround because graphic card memory can't store more than 830 examples in memory for generating image
                 # # Therefore doing loop and generating 800 examples and stacking into list of samples to get 8000 generated images
-                # # This way Inception score is more correct since there are different generated examples from every class of Inception model
+                # # This way Inception score is more correct since there are different generated examples from every class of Inception models
                 # sample_list = []
                 # for i in range(125):
                 #     samples  = self.data.__next__()
@@ -358,8 +358,8 @@ class WGAN_GP(object):
         G_model_path = os.path.join(os.getcwd(), G_model_filename)
         self.D.load_state_dict(torch.load(D_model_path))
         self.G.load_state_dict(torch.load(G_model_path))
-        print('Generator model loaded from {}.'.format(G_model_path))
-        print('Discriminator model loaded from {}-'.format(D_model_path))
+        print('Generator models loaded from {}.'.format(G_model_path))
+        print('Discriminator models loaded from {}-'.format(D_model_path))
 
     def get_infinite_batches(self, data_loader):
         while True:

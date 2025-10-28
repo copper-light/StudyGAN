@@ -79,7 +79,7 @@ class Discriminator(torch.nn.Module):
 
 class DCGAN_MODEL(object):
     def __init__(self, args):
-        print("DCGAN model initalization.")
+        print("DCGAN models initalization.")
         self.G = Generator(args.channels)
         self.D = Discriminator(args.channels)
         self.C = args.channels
@@ -182,7 +182,7 @@ class DCGAN_MODEL(object):
                 if generator_iter % 1000 == 0:
                     # Workaround because graphic card memory can't store more than 800+ examples in memory for generating image
                     # Therefore doing loop and generating 800 examples and stacking into list of samples to get 8000 generated images
-                    # This way Inception score is more correct since there are different generated examples from every class of Inception model
+                    # This way Inception score is more correct since there are different generated examples from every class of Inception models
                     # sample_list = []
                     # for i in range(10):
                     #     z = Variable(torch.randn(800, 100, 1, 1)).cuda(self.cuda_index)
@@ -299,8 +299,8 @@ class DCGAN_MODEL(object):
         G_model_path = os.path.join(os.getcwd(), G_model_filename)
         self.D.load_state_dict(torch.load(D_model_path))
         self.G.load_state_dict(torch.load(G_model_path))
-        print('Generator model loaded from {}.'.format(G_model_path))
-        print('Discriminator model loaded from {}-'.format(D_model_path))
+        print('Generator models loaded from {}.'.format(G_model_path))
+        print('Discriminator models loaded from {}-'.format(D_model_path))
 
     def generate_latent_walk(self, number):
         if not os.path.exists('interpolated_images/'):

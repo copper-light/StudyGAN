@@ -5,7 +5,7 @@ import os
 def parse_args():
     parser = argparse.ArgumentParser(description="Pytorch implementation of GAN models.")
 
-    parser.add_argument('--model', type=str, default='WGAN-GP', choices=['GAN', 'DCGAN', 'WGAN-CP', 'WGAN-GP'])
+    parser.add_argument('--models', type=str, default='WGAN-GP', choices=['GAN', 'DCGAN', 'WGAN-CP', 'WGAN-GP'])
     parser.add_argument('--is_train', type=str, default='True')
     parser.add_argument('--dataroot', default='../data', help='path to dataset')
     parser.add_argument('--dataset', type=str, default='mnist', choices=['mnist', 'fashion-mnist', 'cifar', 'stl10'],
@@ -17,7 +17,7 @@ def parse_args():
 
     parser.add_argument('--load_D', type=str, default='False', help='Path for loading Discriminator network')
     parser.add_argument('--load_G', type=str, default='False', help='Path for loading Generator network')
-    parser.add_argument('--generator_iters', type=int, default=10000, help='The number of iterations for generator in WGAN model.')
+    parser.add_argument('--generator_iters', type=int, default=10000, help='The number of iterations for generator in WGAN models.')
     return check_args(parser.parse_args())
 
 
