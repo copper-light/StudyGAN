@@ -10,6 +10,7 @@ from torch.utils.tensorboard import SummaryWriter
 from utils.util import show_plt
 from models.valina_gan import GAN
 from models.dcgan import DCGAN
+from models.wgan import WGAN
 
 class StreamFlushingHandler(logging.StreamHandler):
     def emit(self, record):
@@ -122,7 +123,7 @@ if __name__ == "__main__":
         device = 'cuda'
 
     # # GAN
-    # model = GAN(input_dim=data_shape, output_dim=data_shape, name="GAN", device=device, is_train=True, lr=lr)
+    # model = GAN(input_dim=(data_shape, output_dim=data_shape, name="GAN", device=device, is_train=True, lr=lr)
     # train_gen_per_iter = 1
     # trainer = Trainer(model, train_gen_per_iter = train_gen_per_iter, log_path = 'logs/')
     # trainer.train(dataloader, epochs)
@@ -133,15 +134,20 @@ if __name__ == "__main__":
     # trainer = Trainer(model, train_gen_per_iter=train_gen_per_iter, log_path='logs/')
     # trainer.train(dataloader, epochs)
 
-    # DCGAN
-    model = DCGAN(input_dim=(1, 28, 28), output_dim=(1, 28, 28), name="DCGAN", device=device, is_train=True, lr=lr)
-    train_gen_per_iter = 1
-    trainer = Trainer(model, train_gen_per_iter=train_gen_per_iter, log_path='logs/')
-    trainer.train(dataloader, epochs)
+    # # DCGAN
+    # model = DCGAN(input_dim=(1, 28, 28), output_dim=(1, 28, 28), name="DCGAN", device=device, is_train=True, lr=lr)
+    # train_gen_per_iter = 1
+    # trainer = Trainer(model, train_gen_per_iter=train_gen_per_iter, log_path='logs/')
+    # trainer.train(dataloader, epochs)
+    #
+    # # DCGAN-Conditional
+    # model = DCGAN(input_dim=(1, 28, 28), output_dim=(1, 28, 28), name="DCGAN-Conditional", device=device, is_train=True,
+    #             lr=lr, num_classes=len(train_dataset.classes))
+    # train_gen_per_iter = 1
+    # trainer = Trainer(model, train_gen_per_iter=train_gen_per_iter, log_path='logs/')
+    # trainer.train(dataloader, epochs)
 
-    # DCGAN-Conditional
-    model = DCGAN(input_dim=(1, 28, 28), output_dim=(1, 28, 28), name="DCGAN-Conditional", device=device, is_train=True,
-                lr=lr, num_classes=len(train_dataset.classes))
-    train_gen_per_iter = 1
+    model = WGAN(input_dim=(1, 28, 28), output_dim=(1, 28, 28), name="WGAN", device=device, is_train=True, lr=lr)
+    train_gen_per_iter = 5
     trainer = Trainer(model, train_gen_per_iter=train_gen_per_iter, log_path='logs/')
     trainer.train(dataloader, epochs)

@@ -72,23 +72,15 @@ class Generator(nn.Module):
         return self.feature(x)
 
 class DCGAN(GAN):
-    def __init__(self, input_dim, output_dim, name="DCGAN", num_classes=0, device='cpu', is_train = True, lr=1e-4):
-        self.input_dim = input_dim
-        self.output_dim = output_dim
-        self.device = device
-        self.name = name
-        self.num_classes = num_classes
-        self.is_train = is_train
-        self.lr = lr
 
+    def _setup_model(self, input_dim, output_dim, num_classes, device, is_train, lr):
         self.G = Generator().to(device)
         self.D = Discriminator().to(device)
 
         if is_train:
-            self.G_Optimizer = optim.Adam(self.G.parameters(), lr=lr)
-            self.D_Optimizer = optim.Adam(self.D.parameters(), lr=lr)
+            self.G_optimizer = optim.Adam(self.G.parameters(), lr=lr)
+            self.D_optimizer = optim.Adam(self.D.parameters(), lr=lr)
             self.criterion = nn.BCELoss()
-
 
 if __name__ == '__main__':
     gen = Generator()

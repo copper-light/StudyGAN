@@ -40,19 +40,15 @@ class Generator(nn.Module):
 
 class GAN(Model):
     def __init__(self, input_dim, output_dim, name="GAN", num_classes = 0, device = 'cpu', is_train = True, lr=1e-4):
-        self.device = device
-        self.name = name
-        self.num_classes = num_classes
-        self.is_train = is_train
-        self.lr = lr
+        super().__init__(input_dim, output_dim, name, num_classes, device, is_train, lr)
+
+    def _setup_model(self, input_dim, output_dim, num_classes, device, is_train, lr):
         self.G = Generator(output_dim, num_classes).to(device)
         self.D = Discriminator(input_dim, num_classes).to(device)
-        self.input_dim = input_dim
-        self.output_dim = output_dim
 
         if is_train:
-            self.G_Optimizer = torch.optim.Adam(self.G.parameters(), lr=lr)
-            self.D_Optimizer = torch.optim.Adam(self.D.parameters(), lr=lr)
+            self.G_optimizer = torch.optim.Adam(self.G.parameters(), lr=lr)
+            self.D_optimizer = torch.optim.Adam(self.D.parameters(), lr=lr)
             self.criterion = nn.BCELoss()
 
     def train_generator(self, x, y):
@@ -66,16 +62,21 @@ class GAN(Model):
 
         pred_fake = self.D(fake_x)
         loss = self.criterion(pred_fake, one)
-        self.G_Optimizer.zero_grad()
+        self.G_optimizer.zero_grad()
         loss.backward()
-        self.G_Optimizer.step()
+        self.G_optimizer.step()
 
         return loss.item()
 
     def train_discriminator(self, x, y):
         one = torch.ones((y.size(0), 1)).to(self.device)
         zero = torch.zeros((y.size(0), 1)).to(self.device)
-        x = x.reshape(x.size(0), *self.input_dim).to(self.device)
+
+        if isinstance(self.input_dim, tuple):
+            x = x.reshape(x.size(0), *self.input_dim).to(self.device)
+        else:
+            x = x.reshape(x.size(0), self.input_dim).to(self.device)
+
         self.D.train()
         onehot = None
 
@@ -85,9 +86,9 @@ class GAN(Model):
 
         pred_real = self.D(x)
         real_loss = self.criterion(pred_real, one)
-        self.D_Optimizer.zero_grad()
+        self.D_optimizer.zero_grad()
         real_loss.backward()
-        self.D_Optimizer.step()
+        self.D_optimizer.step()
 
         fake_x = self.G(self._generate_seed(y)).detach()
 
@@ -96,9 +97,9 @@ class GAN(Model):
 
         pred_fake = self.D(fake_x)
         fake_loss = self.criterion(pred_fake, zero)
-        self.D_Optimizer.zero_grad()
+        self.D_optimizer.zero_grad()
         fake_loss.backward()
-        self.D_Optimizer.step()
+        self.D_optimizer.step()
 
         return real_loss.item(), fake_loss.item()
 
@@ -120,17 +121,17 @@ class GAN(Model):
     def get_checkpoint(self):
         model = {'G': self.G.state_dict(),
                  'D': self.D.state_dict(),
-                 'G_Optimizer': self.G_Optimizer.state_dict(),
-                 'D_Optimizer': self.D_Optimizer.state_dict()}
+                 'G_optimizer': self.G_optimizer.state_dict(),
+                 'D_optimizer': self.D_optimizer.state_dict()}
         return model
 
     def load_checkpoint(self, checkpoint):
         self.G.load_state_dict(checkpoint['G'])
         self.D.load_state_dict(checkpoint['D'])
-        self.G_Optimizer = torch.optim.Adam(self.G.parameters())
-        self.D_Optimizer = torch.optim.Adam(self.D.parameters())
-        self.G_Optimizer.load_state_dict(checkpoint['G_Optimizer'])
-        self.D_Optimizer.load_state_dict(checkpoint['D_Optimizer'])
+        self.G_optimizer = torch.optim.Adam(self.G.parameters())
+        self.D_optimizer = torch.optim.Adam(self.D.parameters())
+        self.G_optimizer.load_state_dict(checkpoint['G_optimizer'])
+        self.D_optimizer.load_state_dict(checkpoint['D_optimizer'])
 
 
 if __name__ == "__main__":
