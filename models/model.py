@@ -2,9 +2,6 @@ import torch.nn as nn
 from abc import ABC, abstractmethod
 
 class Model(ABC):
-    def __init__(self, name, device = 'cpu'):
-        self.device = device
-        self.name = name
 
     @abstractmethod
     def train_discriminator(self, x, y):
@@ -12,6 +9,10 @@ class Model(ABC):
 
     @abstractmethod
     def train_generator(self, x, y):
+        pass
+
+    @abstractmethod
+    def _generate_seed(self, labels):
         pass
 
     @abstractmethod

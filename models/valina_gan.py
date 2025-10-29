@@ -39,12 +39,16 @@ class Generator(nn.Module):
 
 
 class GAN(Model):
-    def __init__(self, input_dim, output_dim, name="GAN", num_classes = 0, device = 'cpu', is_train = True, lr=1e-4, is_conditional = False):
-        super().__init__(name, device)
+    def __init__(self, input_dim, output_dim, name="GAN", num_classes = 0, device = 'cpu', is_train = True, lr=1e-4):
+        self.device = device
+        self.name = name
         self.num_classes = num_classes
-        self.is_conditional = is_conditional
+        self.is_train = is_train
+        self.lr = lr
         self.G = Generator(output_dim, num_classes).to(device)
         self.D = Discriminator(input_dim, num_classes).to(device)
+        self.input_dim = input_dim
+        self.output_dim = output_dim
 
         if is_train:
             self.G_Optimizer = torch.optim.Adam(self.G.parameters(), lr=lr)
@@ -71,7 +75,7 @@ class GAN(Model):
     def train_discriminator(self, x, y):
         one = torch.ones((y.size(0), 1)).to(self.device)
         zero = torch.zeros((y.size(0), 1)).to(self.device)
-        x = x.reshape(x.size(0), -1).to(self.device)
+        x = x.reshape(x.size(0), *self.input_dim).to(self.device)
         self.D.train()
         onehot = None
 
