@@ -3,11 +3,12 @@ from torch import nn
 from models.model import Model
 
 class Discriminator(nn.Module):
-    def __init__(self):
+    def __init__(self, input_dim, num_classes = 0):
         super().__init__()
 
+        in_features = input_dim + num_classes
         self.fc = nn.Sequential(
-            nn.Linear(784, 200),
+            nn.Linear(in_features, 200),
             nn.LeakyReLU(0.02),
             nn.LayerNorm(200),
             nn.Dropout(0.2),
@@ -21,14 +22,14 @@ class Discriminator(nn.Module):
 
 
 class Generator(nn.Module):
-    def __init__(self):
+    def __init__(self, output_dim, num_classes = 0):
         super().__init__()
 
         self.gen_image = nn.Sequential(
-            nn.Linear(100, 200),
+            nn.Linear(100 + num_classes, 200),
             nn.LeakyReLU(0.02),
             nn.LayerNorm(200),
-            nn.Linear(200, 784),
+            nn.Linear(200, output_dim),
             nn.Sigmoid()
         )
 
@@ -38,10 +39,12 @@ class Generator(nn.Module):
 
 
 class GAN(Model):
-    def __init__(self, name="GAN", device = 'cpu', is_train = True, lr=1e-4):
+    def __init__(self, input_dim, output_dim, name="GAN", num_classes = 0, device = 'cpu', is_train = True, lr=1e-4, is_conditional = False):
         super().__init__(name, device)
-        self.G = Generator().to(device)
-        self.D = Discriminator().to(device)
+        self.num_classes = num_classes
+        self.is_conditional = is_conditional
+        self.G = Generator(output_dim, num_classes).to(device)
+        self.D = Discriminator(input_dim, num_classes).to(device)
 
         if is_train:
             self.G_Optimizer = torch.optim.Adam(self.G.parameters(), lr=lr)
@@ -53,6 +56,10 @@ class GAN(Model):
         self.G.train()
 
         fake_x = self.G(self._generate_seed(y))
+        if self.num_classes > 0:
+            onehot = torch.nn.functional.one_hot(y, self.num_classes).to(self.device)
+            fake_x = torch.cat((fake_x, onehot), dim=1)
+
         pred_fake = self.D(fake_x)
         loss = self.criterion(pred_fake, one)
         self.G_Optimizer.zero_grad()
@@ -66,6 +73,11 @@ class GAN(Model):
         zero = torch.zeros((y.size(0), 1)).to(self.device)
         x = x.reshape(x.size(0), -1).to(self.device)
         self.D.train()
+        onehot = None
+
+        if self.num_classes > 0:
+            onehot = torch.nn.functional.one_hot(y, self.num_classes).to(self.device)
+            x = torch.cat((x, onehot), dim=1)
 
         pred_real = self.D(x)
         real_loss = self.criterion(pred_real, one)
@@ -74,6 +86,10 @@ class GAN(Model):
         self.D_Optimizer.step()
 
         fake_x = self.G(self._generate_seed(y)).detach()
+
+        if self.num_classes > 0:
+            fake_x = torch.cat((fake_x, onehot), dim=1)
+
         pred_fake = self.D(fake_x)
         fake_loss = self.criterion(pred_fake, zero)
         self.D_Optimizer.zero_grad()
@@ -83,14 +99,17 @@ class GAN(Model):
         return real_loss.item(), fake_loss.item()
 
     def _generate_seed(self, labels):
-        return torch.randn(labels.size(0), 100).to(self.device)
+        seed = torch.randn(labels.size(0), 100).to(self.device)
+        if self.num_classes > 0:
+            onehot = torch.nn.functional.one_hot(labels, self.num_classes).to(self.device)
+            seed = torch.cat((seed, onehot), dim=1)
+        return seed
 
-    def generate_image_to_numpy(self, num_images):
+    def generate_image_to_numpy(self, classes):
         images = None
         self.G.eval()
         with torch.no_grad():
-            labels = torch.tensor(list(range(num_images)))
-            images = self.G(self._generate_seed(labels))
+            images = self.G(self._generate_seed(classes))
             images = images.reshape(-1, 1, 28, 28).cpu().numpy()
         return images
 
@@ -111,10 +130,10 @@ class GAN(Model):
 
 
 if __name__ == "__main__":
-    gan = GAN()
+    gan = GAN(input_dim=(28*28), output_dim= (28*28))
     labels = torch.tensor([0, 1])
-    images = gan.generate_image(labels)
+    images = gan.generate_image_to_numpy(labels)
 
-    import matplotlib.pyplot as plt
-    plt.imshow(images[0])
+    # import matplotlib.pyplot as plt
+    # plt.imshow(images[0])
     print(images.shape)
