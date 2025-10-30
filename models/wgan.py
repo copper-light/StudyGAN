@@ -43,7 +43,7 @@ class Generator(nn.Module):
         super().__init__()
 
         self.input = nn.Sequential(
-            nn.Linear(100, 3136),
+            nn.Linear(100, 7*7*64),
             nn.BatchNorm1d(3136),
             nn.ReLU()
         )
@@ -87,8 +87,8 @@ class WGAN(GAN):
         self.D = Discriminator().to(device)
 
         if is_train:
-            self.G_optimizer = torch.optim.Adam(self.G.parameters(), lr=lr)
-            self.D_optimizer = torch.optim.Adam(self.D.parameters(), lr=lr)
+            self.G_optimizer = torch.optim.RMSprop(self.G.parameters(), lr=lr)
+            self.D_optimizer = torch.optim.RMSprop(self.D.parameters(), lr=lr)
             self.criterion = WassersteinLoss()
 
     # def _generate_seed(self, labels):
@@ -96,7 +96,7 @@ class WGAN(GAN):
 
     def train_discriminator(self, x, target):
         self.D.train()
-        self.D_optimizer.zero_grad()
+
 
         real_target = torch.ones(x.size(0), 1).to(self.device)
         fake_target = -torch.ones(x.size(0), 1).to(self.device)
@@ -105,14 +105,25 @@ class WGAN(GAN):
         real_output = self.D(x)
         real_loss = self.criterion(real_output, real_target)
 
+        # self.D_optimizer.zero_grad()
+        # real_loss.backward()
+        # self.D_optimizer.step()
+
         seed = self._generate_seed(target).to(self.device)
         fake_x = self.G(seed).detach()
         fake_output = self.D(fake_x)
         fake_loss = self.criterion(fake_output, fake_target)
 
+        # self.D_optimizer.zero_grad()
+        # fake_loss.backward()
+        # self.D_optimizer.step()
+
+        self.D_optimizer.zero_grad()
         loss = fake_loss - real_loss
         loss.backward()
         self.D_optimizer.step()
+
+        loss = (fake_loss + real_loss) * 0.5
 
         if self.clip_threshold != None:
             with torch.no_grad():

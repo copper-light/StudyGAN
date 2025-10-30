@@ -82,6 +82,12 @@ class Trainer:
         self.writer.add_images('images', images, epoch)
 
     def train(self, dataloader, num_epochs):
+        for name, value in self.model.__dict__.items():
+            logging.info(f"{name}: {value}")
+
+        for name, value in self.__dict__.items():
+            logging.info(f"{name}: {value}")
+
         best_loss = float('inf')
         for epoch in range(num_epochs):
             self._epoch(epoch, dataloader)
@@ -91,6 +97,7 @@ class Trainer:
                 model_chk = self.model.get_checkpoint()
                 checkpoint = {'epoch': epoch + 1, 'step': self.step, 'loss': self.losses, 'model': model_chk}
                 torch.save(checkpoint, os.path.join(self.log_path, f'{self.model.name}_checkpoint_epoch_{epoch+1}.pth'))
+                logging.info(f"saved model - epoch:{epoch}, best_loss:{best_loss}")
 
         model_chk = self.model.get_checkpoint()
         checkpoint = {'epoch': num_epochs, 'step': self.step, 'loss': self.losses, 'model': model_chk}
@@ -107,7 +114,7 @@ if __name__ == "__main__":
     lr = 1e-4
     betas = (.9, .999)
     batch_size = 32
-    epochs = 2
+    epochs = 1
 
     transforms = transforms.Compose([
         transforms.ToTensor(),
@@ -135,19 +142,21 @@ if __name__ == "__main__":
     # trainer.train(dataloader, epochs)
 
     # # DCGAN
-    # model = DCGAN(input_dim=(1, 28, 28), output_dim=(1, 28, 28), name="DCGAN", device=device, is_train=True, lr=lr)
-    # train_gen_per_iter = 1
-    # trainer = Trainer(model, train_gen_per_iter=train_gen_per_iter, log_path='logs/')
-    # trainer.train(dataloader, epochs)
-    #
-    # # DCGAN-Conditional
-    # model = DCGAN(input_dim=(1, 28, 28), output_dim=(1, 28, 28), name="DCGAN-Conditional", device=device, is_train=True,
-    #             lr=lr, num_classes=len(train_dataset.classes))
-    # train_gen_per_iter = 1
-    # trainer = Trainer(model, train_gen_per_iter=train_gen_per_iter, log_path='logs/')
-    # trainer.train(dataloader, epochs)
-
-    model = WGAN(input_dim=(1, 28, 28), output_dim=(1, 28, 28), name="WGAN", device=device, is_train=True, lr=lr)
-    train_gen_per_iter = 5
+    model = DCGAN(input_dim=data_shape, output_dim=data_shape, name="DCGAN", device=device, is_train=True, lr=lr)
+    train_gen_per_iter = 1
     trainer = Trainer(model, train_gen_per_iter=train_gen_per_iter, log_path='logs/')
     trainer.train(dataloader, epochs)
+    #
+    # # DCGAN-Conditional
+    model = DCGAN(input_dim=data_shape, output_dim=data_shape, name="DCGAN-Conditional", device=device, is_train=True,
+                lr=lr, num_classes=len(train_dataset.classes))
+    train_gen_per_iter = 1
+    trainer = Trainer(model, train_gen_per_iter=train_gen_per_iter, log_path='logs/')
+    trainer.train(dataloader, epochs)
+
+    # WGAN
+    # clip_threshold = 0.1
+    # model = WGAN(input_dim=(1, 28, 28), output_dim=(1, 28, 28), name="WGAN", device=device, is_train=True, lr=lr, clip_threshold = clip_threshold)
+    # train_gen_per_iter = 5
+    # trainer = Trainer(model, train_gen_per_iter=train_gen_per_iter, log_path='logs/')
+    # trainer.train(dataloader, epochs)

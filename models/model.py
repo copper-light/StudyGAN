@@ -44,3 +44,8 @@ class Model(ABC):
     @abstractmethod
     def load_checkpoint(self, checkpoint):
         pass
+
+if __name__ == '__main__':
+    model = Model(10, 20)
+    for name, value in model.__dict__.items():
+        print(f"{name}: {value}")

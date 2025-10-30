@@ -6,8 +6,14 @@ from models.valina_gan import GAN
 
 
 class Discriminator(nn.Module):
-    def __init__(self):
+    def __init__(self, num_classes = 0):
         super().__init__()
+        self.num_classes = num_classes
+        self.input = nn.Sequential(
+            nn.Linear(28 * 28 + self.num_classes, 28 * 28),
+            nn.LeakyReLU(0.2),
+        )
+
         self.feature = nn.Sequential(
             # 28
             nn.Conv2d(1, 64, kernel_size=5, stride=2, padding=2, bias=False),
@@ -32,6 +38,8 @@ class Discriminator(nn.Module):
         )
 
     def forward(self, x):
+        x = self.input(x)
+        x = x.view(x.size(0), 1, 28, 28)
         x = self.feature(x)
         x = x.flatten(1)
         x = self.fc(x)
@@ -39,11 +47,11 @@ class Discriminator(nn.Module):
 
 
 class Generator(nn.Module):
-    def __init__(self):
+    def __init__(self, num_classes = 0):
         super().__init__()
-
+        self.num_classes = num_classes
         self.input = nn.Sequential(
-            nn.Linear(100, 3136),
+            nn.Linear(100 + num_classes, 3136),
             nn.BatchNorm1d(3136),
             nn.ReLU()
         )
@@ -74,8 +82,8 @@ class Generator(nn.Module):
 class DCGAN(GAN):
 
     def _setup_model(self, input_dim, output_dim, num_classes, device, is_train, lr):
-        self.G = Generator().to(device)
-        self.D = Discriminator().to(device)
+        self.G = Generator(num_classes).to(device)
+        self.D = Discriminator(num_classes).to(device)
 
         if is_train:
             self.G_optimizer = optim.Adam(self.G.parameters(), lr=lr)
@@ -83,11 +91,14 @@ class DCGAN(GAN):
             self.criterion = nn.BCELoss()
 
 if __name__ == '__main__':
-    gen = Generator()
-    seed = torch.randn((64, 100))
+    gen = Generator(10)
+    seed = torch.randn((64, 110))
     images = gen(seed)
     print(images.shape)
 
-    dis = Discriminator()
+    images = images.reshape(64, (28*28))
+    onehot = torch.randn(64, 10)
+    images = torch.concat((images, onehot), dim=1)
+    dis = Discriminator(10)
     pred = dis(images)
     print(pred.shape)

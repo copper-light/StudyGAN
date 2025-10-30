@@ -56,6 +56,8 @@ class GAN(Model):
         self.G.train()
 
         fake_x = self.G(self._generate_seed(y))
+        fake_x = fake_x.reshape(fake_x.size(0), self.input_dim)
+
         if self.num_classes > 0:
             onehot = torch.nn.functional.one_hot(y, self.num_classes).to(self.device)
             fake_x = torch.cat((fake_x, onehot), dim=1)
@@ -72,10 +74,7 @@ class GAN(Model):
         one = torch.ones((y.size(0), 1)).to(self.device)
         zero = torch.zeros((y.size(0), 1)).to(self.device)
 
-        if isinstance(self.input_dim, tuple):
-            x = x.reshape(x.size(0), *self.input_dim).to(self.device)
-        else:
-            x = x.reshape(x.size(0), self.input_dim).to(self.device)
+        x = x.reshape(x.size(0), self.input_dim).to(self.device)
 
         self.D.train()
         onehot = None
@@ -91,6 +90,7 @@ class GAN(Model):
         self.D_optimizer.step()
 
         fake_x = self.G(self._generate_seed(y)).detach()
+        fake_x = fake_x.reshape(fake_x.size(0), self.input_dim)
 
         if self.num_classes > 0:
             fake_x = torch.cat((fake_x, onehot), dim=1)
