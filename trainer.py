@@ -1,5 +1,8 @@
+import os
+os.environ['TF_ENABLE_ONEDNN_OPTS'] = '0'
+
+import sys
 import torch
-import os, sys
 import logging
 import numpy as np
 import time
@@ -11,6 +14,7 @@ from torch.utils.tensorboard import SummaryWriter
 from utils.util import show_plt
 from models.valina_gan import GAN
 from models.dcgan import DCGAN
+from models.dcgan_b import DCGAN_B
 from models.wgan import WGAN
 from models.wgan_gp import WGAN_GP
 
@@ -118,7 +122,7 @@ if __name__ == "__main__":
     lr = 1e-4
     betas = (.9, .999)
     batch_size = 32
-    epochs = 2
+    epochs = 80
 
     transforms = transforms.Compose([
         transforms.ToTensor(),
@@ -139,7 +143,7 @@ if __name__ == "__main__":
     # trainer = Trainer(model, train_gen_per_iter = train_gen_per_iter, log_path = 'logs/')
     # trainer.train(dataloader, epochs)
     #
-    # # GAN-Conditional
+    # GAN-Conditional
     # model = GAN(input_dim=data_shape, output_dim=data_shape, name="GAN-Conditional", device=device, is_train=True, lr=lr, num_classes=len(train_dataset.classes))
     # train_gen_per_iter = 1
     # trainer = Trainer(model, train_gen_per_iter=train_gen_per_iter, log_path='logs/')
@@ -167,10 +171,21 @@ if __name__ == "__main__":
     # trainer = Trainer(model, train_gen_per_iter=train_gen_per_iter, log_path='logs/')
     # trainer.train(dataloader, epochs)
 
-    # WGAN-GP
-    lr = 1e-4
-    epochs = 80
-    train_gen_per_iter = 5
-    model = WGAN_GP(input_dim=(1, 28, 28), output_dim=(1, 28, 28), name="WGAN-GP", device=device, is_train=True, lr=lr)
+    # # WGAN-GP
+    # lr = 1e-4
+    # epochs = 80
+    # train_gen_per_iter = 5
+    # model = WGAN_GP(input_dim=(1, 28, 28), output_dim=(1, 28, 28), name="WGAN-GP", device=device, is_train=True, lr=lr)
+    # trainer = Trainer(model, train_gen_per_iter=train_gen_per_iter, log_path='logs/')
+    # trainer.train(dataloader, epochs)
+
+    model = DCGAN_B(input_dim=(1, 28, 28), output_dim=(1, 28, 28), name="DCGAN_B-Conditional", device=device, is_train=True, lr=lr, num_classes=len(train_dataset.classes))
+    train_gen_per_iter = 1
+    trainer = Trainer(model, train_gen_per_iter=train_gen_per_iter, log_path='logs/')
+    trainer.train(dataloader, epochs)
+
+    model = GAN(input_dim=data_shape, output_dim=data_shape, name="GAN-Conditional", device=device, is_train=True,
+                lr=lr, num_classes=len(train_dataset.classes))
+    train_gen_per_iter = 1
     trainer = Trainer(model, train_gen_per_iter=train_gen_per_iter, log_path='logs/')
     trainer.train(dataloader, epochs)
