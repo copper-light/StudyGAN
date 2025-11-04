@@ -115,7 +115,7 @@ class GAN(Model):
         self.G.eval()
         with torch.no_grad():
             images = self.G(self._generate_seed(classes))
-            images = images.reshape(-1, 1, 28, 28).cpu().numpy()
+            images = images.reshape(-1, *self.output_dim).cpu().numpy()
         return images
 
     def get_checkpoint(self):

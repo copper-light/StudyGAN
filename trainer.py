@@ -1,4 +1,7 @@
 import os
+
+from fontTools.misc.plistlib import end_data
+
 os.environ['TF_ENABLE_ONEDNN_OPTS'] = '0'
 
 import sys
@@ -6,12 +9,14 @@ import torch
 import logging
 import numpy as np
 import time
+import argparse
+
 from datetime import datetime
 from tqdm import tqdm
 
 from torch.utils.tensorboard import SummaryWriter
 
-from utils.util import show_plt
+from utils.util import show_plt, str2bool
 from models.valina_gan import GAN
 from models.dcgan import DCGAN
 from models.dcgan_b import DCGAN_B
@@ -113,79 +118,83 @@ class Trainer:
 
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="GAN model trainer.")
+    parser.add_argument('--models', type=str, default='GAN', choices=['GAN', 'GAN-C', 'DCGAN', 'DCGAN-C', 'WGAN', 'WGAN-GP'])
+    parser.add_argument('--lr', type=float, default=1e-4)
+    parser.add_argument('--batch-size', type=int, default=32)
+    parser.add_argument('--epochs', type=int, default=40)
+    parser.add_argument('--use-gpu', type=str2bool, default=True, choices=['True', 'False', 'true', 'false'])
+    parser.add_argument('--log-path', type=str, default='logs/')
+    parser.add_argument('--dataset', type=str, default='mnist', choices=['mnist'])
+    args = parser.parse_args()
+
     import torchvision.transforms as transforms
     import torchvision.datasets as datasets
     from torch.utils.data import DataLoader
     from math import prod
-    # from WGANGP import Generator, Discriminator
 
-    lr = 1e-4
-    betas = (.9, .999)
-    batch_size = 32
-    epochs = 80
+    train_dataset = None
+    dataloader = None
+    data_shape = None
+    if args.dataset == 'mnist':
+        transforms = transforms.Compose([
+            transforms.ToTensor(),
+            # transforms.Normalize(0.5, 0.5)
+        ])
 
-    transforms = transforms.Compose([
-        transforms.ToTensor(),
-        # transforms.Normalize(0.5, 0.5)
-    ])
+        train_dataset = datasets.MNIST(root="data/", train=True, transform=transforms)
+        dataloader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True)
+        data_shape = (1, 28, 28)
 
-    train_dataset = datasets.MNIST(root="data/", train=True, transform=transforms)
-    dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
-    data_shape = prod(train_dataset.data[0].shape)
+    assert dataloader is not None, "Not found dataset"
 
     device = 'cpu'
-    if torch.cuda.is_available():
-        device = 'cuda'
+    if args.use_gpu:
+        if torch.cuda.is_available():
+            device = 'cuda'
 
-    # # GAN
-    # model = GAN(input_dim=(data_shape, output_dim=data_shape, name="GAN", device=device, is_train=True, lr=lr)
-    # train_gen_per_iter = 1
-    # trainer = Trainer(model, train_gen_per_iter = train_gen_per_iter, log_path = 'logs/')
-    # trainer.train(dataloader, epochs)
-    #
-    # GAN-Conditional
-    # model = GAN(input_dim=data_shape, output_dim=data_shape, name="GAN-Conditional", device=device, is_train=True, lr=lr, num_classes=len(train_dataset.classes))
-    # train_gen_per_iter = 1
-    # trainer = Trainer(model, train_gen_per_iter=train_gen_per_iter, log_path='logs/')
-    # trainer.train(dataloader, epochs)
+    if args.models == 'GAN':
+        input_shape = prod(data_shape)
+        model = GAN(input_dim=input_shape, output_dim=data_shape, name="GAN", device=device, is_train=True, lr=args.lr)
+        train_gen_per_iter = 1
+        trainer = Trainer(model, train_gen_per_iter = train_gen_per_iter, log_path = args.log_path)
+        trainer.train(dataloader, args.epochs)
 
-    # # DCGAN
-    # model = DCGAN(input_dim=(1, 28, 28), output_dim=(1, 28, 28), name="DCGAN", device=device, is_train=True, lr=lr)
-    # train_gen_per_iter = 1
-    # trainer = Trainer(model, train_gen_per_iter=train_gen_per_iter, log_path='logs/')
-    # trainer.train(dataloader, epochs)
-    #
-    # # DCGAN-Conditional
-    # model = DCGAN(input_dim=(1, 28, 28), output_dim=(1, 28, 28), name="DCGAN-Conditional", device=device, is_train=True,
-    #             lr=lr, num_classes=len(train_dataset.classes))
-    # train_gen_per_iter = 1
-    # trainer = Trainer(model, train_gen_per_iter=train_gen_per_iter, log_path='logs/')
-    # trainer.train(dataloader, epochs)
+    elif args.models == 'GAN-C':
+        input_shape = prod(data_shape)
+        model = GAN(input_dim=input_shape, output_dim=data_shape, name="GAN-Conditional", device=device, is_train=True,
+                    lr=args.lr, num_classes=len(train_dataset.classes))
+        train_gen_per_iter = 1
+        trainer = Trainer(model, train_gen_per_iter=train_gen_per_iter, log_path = args.log_path)
+        trainer.train(dataloader, args.epochs)
 
-    # WGAN
-    # lr = 1e-4
-    # epochs = 80
-    # clip_threshold = 0.1
-    # train_gen_per_iter = 5
-    # model = WGAN(input_dim=(1, 28, 28), output_dim=(1, 28, 28), name="WGAN", device=device, is_train=True, lr=lr, clip_threshold = clip_threshold)
-    # trainer = Trainer(model, train_gen_per_iter=train_gen_per_iter, log_path='logs/')
-    # trainer.train(dataloader, epochs)
+    elif args.models == 'DCGAN':
+        input_shape = prod(data_shape)
+        model = DCGAN(input_dim=input_shape, output_dim=data_shape, name="DCGAN", device=device, is_train=True, lr=args.lr)
+        train_gen_per_iter = 1
+        trainer = Trainer(model, train_gen_per_iter=train_gen_per_iter, log_path=args.log_path)
+        trainer.train(dataloader, args.epochs)
 
-    # # WGAN-GP
-    # lr = 1e-4
-    # epochs = 80
-    # train_gen_per_iter = 5
-    # model = WGAN_GP(input_dim=(1, 28, 28), output_dim=(1, 28, 28), name="WGAN-GP", device=device, is_train=True, lr=lr)
-    # trainer = Trainer(model, train_gen_per_iter=train_gen_per_iter, log_path='logs/')
-    # trainer.train(dataloader, epochs)
+    elif args.models == 'DCGAN-C':
+        input_shape = prod(data_shape)
+        model = DCGAN(input_dim=input_shape, output_dim=data_shape, name="DCGAN-Conditional", device=device, is_train=True,
+                    lr=args.lr, num_classes=len(train_dataset.classes))
+        train_gen_per_iter = 1
+        trainer = Trainer(model, train_gen_per_iter=train_gen_per_iter, log_path=args.log_path)
+        trainer.train(dataloader, args.epochs)
 
-    model = DCGAN_B(input_dim=(1, 28, 28), output_dim=(1, 28, 28), name="DCGAN_B-Conditional", device=device, is_train=True, lr=lr, num_classes=len(train_dataset.classes))
-    train_gen_per_iter = 1
-    trainer = Trainer(model, train_gen_per_iter=train_gen_per_iter, log_path='logs/')
-    trainer.train(dataloader, epochs)
+    elif args.models == 'WGAN':
+        clip_threshold = 0.1
+        train_gen_per_iter = 5
+        input_shape = prod(data_shape)
+        model = WGAN(input_dim=input_shape, output_dim=data_shape, name="WGAN", device=device, is_train=True, lr=args.lr, clip_threshold = clip_threshold)
+        trainer = Trainer(model, train_gen_per_iter=train_gen_per_iter, log_path=args.log_path)
+        trainer.train(dataloader, args.epochs)
 
-    model = GAN(input_dim=data_shape, output_dim=data_shape, name="GAN-Conditional", device=device, is_train=True,
-                lr=lr, num_classes=len(train_dataset.classes))
-    train_gen_per_iter = 1
-    trainer = Trainer(model, train_gen_per_iter=train_gen_per_iter, log_path='logs/')
-    trainer.train(dataloader, epochs)
+    elif args.models == 'WGAN-GP':
+        train_gen_per_iter = 5
+        input_shape = prod(data_shape)
+        gp_weight = 10
+        model = WGAN_GP(input_dim=input_shape, output_dim=data_shape, name="WGAN-GP", device=device, is_train=True, lr=args.lr, gp_weight=gp_weight)
+        trainer = Trainer(model, train_gen_per_iter=train_gen_per_iter, log_path=args.log_path)
+        trainer.train(dataloader, args.epochs)

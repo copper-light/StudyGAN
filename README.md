@@ -41,3 +41,27 @@
   * 잘 살펴볼 것은 Gradient Penalty Loss은 모델의 급격한 변화를 제한하기 위해서 1 사이의 노름을 먹여줌과 동시에 립시츠 제약을 검
     * 점점 0 에 수렴함에 따라 성능이 올라가는 것을 볼 수 있음
     * 모델의 학습 진척도를 짐작할 수 있는 수단으로 활용될 수 있을 듯
+
+
+### How to train a model
+* mnist 데이터를 사용하고 별도로 다운받아서 data/MNIST/raw/* 폴더 아래 바이너리 파일들 위치시킬 것
+  * http://kaggle.com/datasets/hojjatk/mnist-dataset/data
+
+
+```bash
+# GAN model trainer.
+
+# options:
+#  -h, --help            show this help message and exit
+#  --models {GAN,GAN-C,DCGAN,DCGAN-C,WGAN,WGAN-GP}
+#  --lr LR
+#  --batch-size BATCH_SIZE
+#  --epochs EPOCHS
+#  --use-gpu {True,False,true,false}
+#  --log-path LOG_PATH
+
+python trainer.py --model GAN --lr 0.0001 --batch-size 1 --epochs 40
+python trainer.py --model DCGAN --lr 0.0001 --batch-size 1 --epochs 40
+python trainer.py --model WGAN --lr 0.0001 --batch-size 32 --epochs 80
+python trainer.py --model WGAN-GP --lr 0.0001 --batch-size 32 --epochs 80
+```

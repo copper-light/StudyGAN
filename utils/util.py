@@ -1,3 +1,5 @@
+import argparse
+
 import matplotlib.pyplot as plt
 
 def show_plt(images, n_rows=1, n_cols=10, show = False, save_path = None):
@@ -24,3 +26,14 @@ def show_plt(images, n_rows=1, n_cols=10, show = False, save_path = None):
 
     if show:
         plt.show()
+
+
+def str2bool(value):
+    if isinstance(value, bool):
+        return value
+    if value.lower() == 'true':
+        return True
+    elif value.lower() == 'false':
+        return False
+    else:
+        raise argparse.ArgumentTypeError('Boolean value expected.')
