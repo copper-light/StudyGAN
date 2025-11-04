@@ -68,15 +68,17 @@ class Trainer:
                 g_loss = self.model.train_generator(x, y)
                 g_losses.append(g_loss)
 
-            progress.set_postfix({'epoch':epoch + 1, 'step': self.step, 'd_loss': np.mean(d_losses), 'g_loss': np.mean(g_losses)})
+            progress.set_postfix({'epoch':epoch, 'step': self.step, 'd_loss': np.mean(d_losses), 'g_loss': np.mean(g_losses)})
 
         classes = 10
         if self.model.num_classes > 0:
             classes = self.model.num_classes
-
-        classes = torch.tensor(list(range(classes))).to(self.model.device)
+        classes = [[i for _ in range(classes)] for i in range(classes)]
+        classes = torch.tensor(classes).to(self.model.device).reshape(-1)
+        # classes = [i for i in range(classes)]
+        # classes = torch.tensor(classes).to(self.model.device)
         images = self.model.generate_image_to_numpy(classes)
-        show_plt(images, n_rows=1, n_cols=len(images), show=False, save_path=os.path.join(self.log_path, f'{self.model.name}_image_epoch_{epoch+1}.png'))
+        result_img = show_plt(images, n_rows=10, n_cols=10, show=False, save_path=os.path.join(self.log_path, f'{self.model.name}_image_epoch_{epoch+1}.png'))
 
         self.losses['G'].append(np.mean(g_losses))
         self.losses['D'].append(np.mean(d_losses))
@@ -84,11 +86,12 @@ class Trainer:
         s = int(time.time() - start_time)
         m = s // 60
         s = s % 60
-        logging.info(f"elapsed: {m:02d}:{s:02d}, epoch: {epoch + 1}, step: {self.step}, d_loss: {np.mean(d_losses):.04f}, g_loss: {np.mean(g_losses):.04f}")
+        logging.info(f"elapsed: {m:02d}:{s:02d}, epoch: {epoch}, step: {self.step}, d_loss: {np.mean(d_losses):.04f}, g_loss: {np.mean(g_losses):.04f}")
 
+        result_img = torch.tensor(result_img).permute(2,0,1).unsqueeze(dim=0)
         self.writer.add_scalar('d_loss', np.mean(d_losses), epoch)
         self.writer.add_scalar('g_loss', np.mean(g_losses), epoch)
-        self.writer.add_images('images', images, epoch)
+        self.writer.add_images('image', result_img, epoch)
 
     def train(self, dataloader, num_epochs):
         logging.info("params: ")
@@ -102,13 +105,13 @@ class Trainer:
 
         best_loss = float('inf')
 
-        for epoch in range(num_epochs):
+        for epoch in range(1, num_epochs+1):
             self._epoch(epoch, dataloader)
 
             if best_loss > self.losses['G'][-1]:
                 best_loss = self.losses['G'][-1]
                 model_chk = self.model.get_checkpoint()
-                checkpoint = {'epoch': epoch + 1, 'step': self.step, 'loss': self.losses, 'model': model_chk}
+                checkpoint = {'epoch': epoch, 'step': self.step, 'loss': self.losses, 'model': model_chk}
                 torch.save(checkpoint, os.path.join(self.log_path, f'{self.model.name}_checkpoint_epoch_{epoch+1}.pth'))
                 logging.info(f"saved model - epoch:{epoch}, best_loss:{best_loss}")
 
@@ -119,7 +122,7 @@ class Trainer:
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="GAN model trainer.")
-    parser.add_argument('--models', type=str, default='GAN', choices=['GAN', 'GAN-C', 'DCGAN', 'DCGAN-C', 'WGAN', 'WGAN-GP'])
+    parser.add_argument('--models', type=str, default='DCGAN-C', choices=['GAN', 'GAN-C', 'DCGAN', 'DCGAN-C', 'WGAN', 'WGAN-GP'])
     parser.add_argument('--lr', type=float, default=1e-4)
     parser.add_argument('--batch-size', type=int, default=32)
     parser.add_argument('--epochs', type=int, default=40)
@@ -140,7 +143,7 @@ if __name__ == "__main__":
     if args.dataset == 'mnist':
         transforms = transforms.Compose([
             transforms.ToTensor(),
-            # transforms.Normalize(0.5, 0.5)
+            # transforms.Normalize((0.1307,), (0.3081,))
         ])
 
         train_dataset = datasets.MNIST(root="data/", train=True, transform=transforms)
@@ -150,7 +153,7 @@ if __name__ == "__main__":
     elif args.dataset == 'cifar10':
         transforms = transforms.Compose([
             transforms.ToTensor(),
-            # transforms.Normalize(0.5, 0.5)
+            transforms.Normalize((0.5,0.5,0.5), (0.5,0.5,0.5))
         ])
         # https://www.cs.toronto.edu/~kriz/cifar-10-python.tar.gz
         train_dataset = datasets.CIFAR10(root="data/", train=True, download=True, transform=transforms)

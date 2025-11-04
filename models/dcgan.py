@@ -44,7 +44,7 @@ class Discriminator(nn.Module):
 
     def forward(self, x):
         x = self.input(x)
-        x = x.view(x.size(0), self.in_channels, self.w, self.h)
+        x = x.view(x.size(0), self.in_channels, self.h, self.w)
         x = self.feature(x)
         x = x.flatten(1)
         x = self.fc(x)
@@ -68,16 +68,15 @@ class Generator(nn.Module):
         )
 
         self.feature = nn.Sequential(
-
             # * 2
             nn.ConvTranspose2d(64, 128, kernel_size=3, stride=2, padding=1, output_padding=1, bias=False),
             nn.BatchNorm2d(128),
-            nn.LeakyReLU(0.2),
+            nn.ReLU(),
 
             # * 2
             nn.ConvTranspose2d(128, 64, kernel_size=3, stride=2, padding=1, output_padding=1, bias=False),
             nn.BatchNorm2d(64),
-            nn.LeakyReLU(0.2),
+            nn.ReLU(),
 
             # * 1
             nn.Conv2d(64, self.output_channels, kernel_size=3, stride=1, padding=1, bias=False),
