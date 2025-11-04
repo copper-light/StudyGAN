@@ -6,17 +6,22 @@ from models.valina_gan import GAN
 
 
 class Discriminator(nn.Module):
-    def __init__(self, num_classes = 0):
+    def __init__(self, input_dim, num_classes = 0):
         super().__init__()
         self.num_classes = num_classes
+        self.in_channels = input_dim[0]
+        self.w = input_dim[1]
+        self.h = input_dim[2]
+        self.out_features = self.in_channels * self.w * self.h
+        self.in_features = self.out_features + num_classes
         self.input = nn.Sequential(
-            nn.Linear(28 * 28 + self.num_classes, 28 * 28),
+            nn.Linear(self.in_features, self.out_features),
             nn.LeakyReLU(0.2),
         )
 
         self.feature = nn.Sequential(
             # 28
-            nn.Conv2d(1, 64, kernel_size=5, stride=2, padding=2, bias=False),
+            nn.Conv2d(self.in_channels, 64, kernel_size=5, stride=2, padding=2, bias=False),
             nn.BatchNorm2d(64),
             nn.LeakyReLU(0.2),
             nn.Dropout(0.5),
@@ -33,13 +38,13 @@ class Discriminator(nn.Module):
             nn.Dropout(0.5),
         )
         self.fc = nn.Sequential(
-            nn.Linear(7 * 7 * 1, 1),
+            nn.Linear(int((self.w * self.h)/16), 1),
             nn.Sigmoid()
         )
 
     def forward(self, x):
         x = self.input(x)
-        x = x.view(x.size(0), 1, 28, 28)
+        x = x.view(x.size(0), self.in_channels, self.w, self.h)
         x = self.feature(x)
         x = x.flatten(1)
         x = self.fc(x)
@@ -47,48 +52,56 @@ class Discriminator(nn.Module):
 
 
 class Generator(nn.Module):
-    def __init__(self, num_classes = 0):
+    def __init__(self, output_dim, num_classes = 0):
         super().__init__()
         self.num_classes = num_classes
+
+        self.output_channels = output_dim[0]
+        self.w = output_dim[1]
+        self.h = output_dim[2]
+        self.out_features = int((self.w * self.h) / (4 * 4) * 64)
+
         self.input = nn.Sequential(
-            nn.Linear(100 + num_classes, 3136),
-            nn.BatchNorm1d(3136),
+            nn.Linear(100 + num_classes, self.out_features),
+            nn.BatchNorm1d(self.out_features),
             nn.ReLU()
         )
 
         self.feature = nn.Sequential(
 
-            # 7 -> 14
+            # * 2
             nn.ConvTranspose2d(64, 128, kernel_size=3, stride=2, padding=1, output_padding=1, bias=False),
             nn.BatchNorm2d(128),
             nn.LeakyReLU(0.2),
 
-            # 14 -> 28
+            # * 2
             nn.ConvTranspose2d(128, 64, kernel_size=3, stride=2, padding=1, output_padding=1, bias=False),
             nn.BatchNorm2d(64),
             nn.LeakyReLU(0.2),
 
-            # 28 -> 28
-            nn.Conv2d(64, 1, kernel_size=3, stride=1, padding=1, bias=False),
-            nn.BatchNorm2d(1),
+            # * 1
+            nn.Conv2d(64, self.output_channels, kernel_size=3, stride=1, padding=1, bias=False),
+            nn.BatchNorm2d(self.output_channels),
             nn.Sigmoid() # tanh 와 비교해볼 필요 있음 -> 이미지에서 tanh
         )
 
     def forward(self, x):
         x = self.input(x)
-        x = x.view(x.size(0), 64, 7, 7)
+        x = x.view(x.size(0), 64, int(self.w/4), int(self.h/4))
         return self.feature(x)
+
 
 class DCGAN(GAN):
 
     def _setup_model(self, input_dim, output_dim, num_classes, device, is_train, lr):
-        self.G = Generator(num_classes).to(device)
-        self.D = Discriminator(num_classes).to(device)
+        self.G = Generator(output_dim, num_classes).to(device)
+        self.D = Discriminator(input_dim, num_classes).to(device)
 
         if is_train:
             self.G_optimizer = optim.Adam(self.G.parameters(), lr=lr)
             self.D_optimizer = optim.Adam(self.D.parameters(), lr=lr)
             self.criterion = nn.BCELoss()
+
 
 if __name__ == '__main__':
     gen = Generator(10)

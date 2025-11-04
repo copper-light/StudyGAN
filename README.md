@@ -46,7 +46,8 @@
 ### How to train a model
 * mnist 데이터를 사용하고 별도로 다운받아서 data/MNIST/raw/* 폴더 아래 바이너리 파일들 위치시킬 것
   * http://kaggle.com/datasets/hojjatk/mnist-dataset/data
-
+* cifar10 
+  * https://www.cs.toronto.edu/~kriz/cifar-10-python.tar.gz
 
 ```bash
 # GAN model trainer.

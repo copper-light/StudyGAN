@@ -2,11 +2,12 @@ import torch
 from torch import nn
 from models.model import Model
 
+
 class Discriminator(nn.Module):
     def __init__(self, input_dim, num_classes = 0):
         super().__init__()
-
-        in_features = input_dim + num_classes
+        in_features = input_dim[0] * input_dim[1] * input_dim[2]
+        in_features = in_features + num_classes
         self.fc = nn.Sequential(
             nn.Linear(in_features, 200),
             nn.LeakyReLU(0.02),
@@ -24,6 +25,7 @@ class Discriminator(nn.Module):
 class Generator(nn.Module):
     def __init__(self, output_dim, num_classes = 0):
         super().__init__()
+        output_dim = output_dim[0] * output_dim[1] * output_dim[2]
 
         self.gen_image = nn.Sequential(
             nn.Linear(100 + num_classes, 200),
@@ -56,7 +58,7 @@ class GAN(Model):
         self.G.train()
 
         fake_x = self.G(self._generate_seed(y))
-        fake_x = fake_x.reshape(fake_x.size(0), self.input_dim)
+        fake_x = fake_x.reshape(fake_x.size(0), -1)
 
         if self.num_classes > 0:
             onehot = torch.nn.functional.one_hot(y, self.num_classes).to(self.device)
@@ -74,7 +76,8 @@ class GAN(Model):
         one = torch.ones((y.size(0), 1)).to(self.device)
         zero = torch.zeros((y.size(0), 1)).to(self.device)
 
-        x = x.reshape(x.size(0), self.input_dim).to(self.device)
+        x = torch.transpose(x, 3, 1)
+        x = x.reshape(x.size(0), -1).to(self.device)
 
         self.D.train()
         onehot = None
@@ -90,7 +93,7 @@ class GAN(Model):
         self.D_optimizer.step()
 
         fake_x = self.G(self._generate_seed(y)).detach()
-        fake_x = fake_x.reshape(fake_x.size(0), self.input_dim)
+        fake_x = fake_x.reshape(fake_x.size(0), -1)
 
         if self.num_classes > 0:
             fake_x = torch.cat((fake_x, onehot), dim=1)

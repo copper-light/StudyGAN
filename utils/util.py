@@ -1,5 +1,5 @@
 import argparse
-
+import numpy as np
 import matplotlib.pyplot as plt
 
 def show_plt(images, n_rows=1, n_cols=10, show = False, save_path = None):
@@ -12,7 +12,10 @@ def show_plt(images, n_rows=1, n_cols=10, show = False, save_path = None):
             image = images[i].reshape(28, 28)
             ax.imshow(image, cmap='gray')
         else:
-            ax.imshow(image, cmap='rgb')
+            image = np.transpose(image, (2, 1, 0))
+            image = image * 255
+            image = image.astype(np.uint8)
+            ax.imshow(image)
         # image = image * 0.5 + 0.5
 
         # 예시로 각 그림에 숫자 표시
