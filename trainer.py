@@ -22,6 +22,7 @@ from models.dcgan import DCGAN
 from models.dcgan_b import DCGAN_B
 from models.wgan import WGAN
 from models.wgan_gp import WGAN_GP
+from models.wgan_gp_c import WGAN_GP_C
 
 TIME_FORMAT = ('%Y%m%d_%H%M%S')
 
@@ -119,13 +120,13 @@ class Trainer:
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="GAN model trainer.")
-    parser.add_argument('--models', type=str, default='GAN', choices=['GAN', 'GAN-C', 'DCGAN', 'DCGAN-C', 'WGAN', 'WGAN-GP'])
+    parser.add_argument('--models', type=str, default='DCGAN', choices=['GAN', 'GAN-C', 'DCGAN', 'DCGAN-C', 'WGAN', 'WGAN-GP'])
     parser.add_argument('--lr', type=float, default=1e-4)
     parser.add_argument('--batch-size', type=int, default=32)
     parser.add_argument('--epochs', type=int, default=40)
     parser.add_argument('--use-gpu', type=str2bool, default=True, choices=['True', 'False', 'true', 'false'])
     parser.add_argument('--log-path', type=str, default='logs/')
-    parser.add_argument('--dataset', type=str, default='mnist', choices=['mnist', 'cifar10'])
+    parser.add_argument('--dataset', type=str, default='cifar10', choices=['mnist', 'cifar10'])
     args = parser.parse_args()
 
     import torchvision.transforms as transforms
@@ -140,7 +141,7 @@ if __name__ == "__main__":
     if args.dataset == 'mnist':
         transforms = transforms.Compose([
             transforms.ToTensor(),
-            # transforms.Normalize(0.5, 0.5)
+            transforms.Normalize(0.5, 0.5)
         ])
 
         train_dataset = datasets.MNIST(root="data/", train=True, transform=transforms)
@@ -150,7 +151,7 @@ if __name__ == "__main__":
     elif args.dataset == 'cifar10':
         transforms = transforms.Compose([
             transforms.ToTensor(),
-            # transforms.Normalize(0.5, 0.5)
+            transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
         ])
         # https://www.cs.toronto.edu/~kriz/cifar-10-python.tar.gz
         train_dataset = datasets.CIFAR10(root="data/", train=True, download=True, transform=transforms)
@@ -200,6 +201,6 @@ if __name__ == "__main__":
     elif args.models == 'WGAN-GP':
         train_gen_per_iter = 5
         gp_weight = 10
-        model = WGAN_GP(input_dim=data_shape, output_dim=data_shape, name="WGAN-GP", device=device, is_train=True, lr=args.lr, gp_weight=gp_weight)
+        model = WGAN_GP_C(input_dim=data_shape, output_dim=data_shape, name="WGAN-GP", device=device, is_train=True, lr=args.lr, gp_weight=gp_weight)
         trainer = Trainer(model, train_gen_per_iter=train_gen_per_iter, log_path=args.log_path)
         trainer.train(dataloader, args.epochs)

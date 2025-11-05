@@ -32,7 +32,7 @@ class Generator(nn.Module):
             nn.LeakyReLU(0.02),
             nn.LayerNorm(200),
             nn.Linear(200, output_dim),
-            nn.Sigmoid()
+            nn.Tanh()
         )
 
     def forward(self, x):

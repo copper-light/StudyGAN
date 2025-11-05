@@ -62,7 +62,7 @@ class Generator(nn.Module):
 
             # 28 -> 28
             nn.Conv2d(64, 1, kernel_size=3, stride=1, padding=1, bias=False),
-            nn.Sigmoid() # tanh 와 비교해볼 필요 있음 -> 이미지에서 tanh
+            nn.Tanh() # tanh 와 비교해볼 필요 있음 -> 이미지에서 tanh
         )
 
     def forward(self, x):

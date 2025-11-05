@@ -8,17 +8,16 @@ def show_plt(images, n_rows=1, n_cols=10, show = False, save_path = None):
     for i in range(n_cols):
         ax = axes[i]
         image = images[i] # numpy
+        image = image * 0.5 + 0.5
         if images.shape[1] == 1:
             image = images[i].reshape(28, 28)
             ax.imshow(image, cmap='gray')
         else:
             image = np.transpose(image, (2, 1, 0))
+
             image = image * 255
             image = image.astype(np.uint8)
             ax.imshow(image)
-        # image = image * 0.5 + 0.5
-
-        # 예시로 각 그림에 숫자 표시
 
         ax.axis('off')  # 축 숨기기
 

@@ -14,6 +14,7 @@ class Discriminator(nn.Module):
         self.h = input_dim[2]
         self.out_features = self.in_channels * self.w * self.h
         self.in_features = self.out_features + num_classes
+
         self.input = nn.Sequential(
             nn.Linear(self.in_features, self.out_features),
             nn.LeakyReLU(0.2),
@@ -44,7 +45,7 @@ class Discriminator(nn.Module):
 
     def forward(self, x):
         x = self.input(x)
-        x = x.view(x.size(0), self.in_channels, self.w, self.h)
+        x = x.view(x.size(0), self.in_channels, self.h, self.w)
         x = self.feature(x)
         x = x.flatten(1)
         x = self.fc(x)
@@ -82,7 +83,7 @@ class Generator(nn.Module):
             # * 1
             nn.Conv2d(64, self.output_channels, kernel_size=3, stride=1, padding=1, bias=False),
             nn.BatchNorm2d(self.output_channels),
-            nn.Sigmoid() # tanh 와 비교해볼 필요 있음 -> 이미지에서 tanh
+            nn.Tanh() # tanh 와 비교해볼 필요 있음 -> 이미지에서 tanh
         )
 
     def forward(self, x):
