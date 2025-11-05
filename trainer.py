@@ -75,10 +75,16 @@ class Trainer:
         if self.model.num_classes > 0:
             classes = self.model.num_classes
 
-        classes = torch.tensor(list(range(classes))).to(self.model.device)
+        classes = [[i for _ in range(classes)] for i in range(classes)]
+        classes = torch.tensor(classes).to(self.model.device).reshape(-1)
+        
+        # classes = torch.tensor(list(range(classes))).to(self.model.device)
+        
         images = self.model.generate_image_to_numpy(classes)
-        show_plt(images, n_rows=1, n_cols=len(images), show=False, save_path=os.path.join(self.log_path, f'{self.model.name}_image_epoch_{epoch+1}.png'))
-
+        
+        save_image = show_plt(images, n_rows=10, n_cols=10, show=False, save_path=os.path.join(self.log_path, f'{self.model.name}_image_epoch_{epoch+1}.png'))
+        save_image = torch.tensor(save_image).permute(2,0,1).unsqueeze(dim=0)
+        
         self.losses['G'].append(np.mean(g_losses))
         self.losses['D'].append(np.mean(d_losses))
 
@@ -89,7 +95,7 @@ class Trainer:
 
         self.writer.add_scalar('d_loss', np.mean(d_losses), epoch)
         self.writer.add_scalar('g_loss', np.mean(g_losses), epoch)
-        self.writer.add_images('images', images, epoch)
+        self.writer.add_images('image', save_image, epoch)
 
     def train(self, dataloader, num_epochs):
         logging.info("params: ")
@@ -120,7 +126,7 @@ class Trainer:
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="GAN model trainer.")
-    parser.add_argument('--models', type=str, default='DCGAN', choices=['GAN', 'GAN-C', 'DCGAN', 'DCGAN-C', 'WGAN', 'WGAN-GP'])
+    parser.add_argument('--models', type=str, default='DCGAN', choices=['GAN', 'GAN-C', 'DCGAN', 'DCGAN-C', 'WGAN', 'WGAN-GP','WGAN-GP-C'])
     parser.add_argument('--lr', type=float, default=1e-4)
     parser.add_argument('--batch-size', type=int, default=32)
     parser.add_argument('--epochs', type=int, default=40)
@@ -172,8 +178,7 @@ if __name__ == "__main__":
         trainer.train(dataloader, args.epochs)
 
     elif args.models == 'GAN-C':
-        model = GAN(input_dim=data_shape, output_dim=data_shape, name="GAN-Conditional", device=device, is_train=True,
-                    lr=args.lr, num_classes=len(train_dataset.classes))
+        model = GAN(input_dim=data_shape, output_dim=data_shape, name="GAN-Conditional", device=device, is_train=True, lr=args.lr, num_classes=len(train_dataset.classes))
         train_gen_per_iter = 1
         trainer = Trainer(model, train_gen_per_iter=train_gen_per_iter, log_path = args.log_path)
         trainer.train(dataloader, args.epochs)
@@ -185,8 +190,7 @@ if __name__ == "__main__":
         trainer.train(dataloader, args.epochs)
 
     elif args.models == 'DCGAN-C':
-        model = DCGAN(input_dim=data_shape, output_dim=data_shape, name="DCGAN-Conditional", device=device, is_train=True,
-                    lr=args.lr, num_classes=len(train_dataset.classes))
+        model = DCGAN(input_dim=data_shape, output_dim=data_shape, name="DCGAN-Conditional", device=device, is_train=True, lr=args.lr, num_classes=len(train_dataset.classes))
         train_gen_per_iter = 1
         trainer = Trainer(model, train_gen_per_iter=train_gen_per_iter, log_path=args.log_path)
         trainer.train(dataloader, args.epochs)
@@ -202,5 +206,15 @@ if __name__ == "__main__":
         train_gen_per_iter = 5
         gp_weight = 10
         model = WGAN_GP_C(input_dim=data_shape, output_dim=data_shape, name="WGAN-GP", device=device, is_train=True, lr=args.lr, gp_weight=gp_weight)
+        trainer = Trainer(model, train_gen_per_iter=train_gen_per_iter, log_path=args.log_path)
+        trainer.train(dataloader, args.epochs)
+
+    elif args.models == 'WGAN-GP-C':
+        train_gen_per_iter = 5
+        gp_weight = 10
+        model = WGAN_GP_C(input_dim=data_shape, output_dim=data_shape, 
+                          name="WGAN-GP", device=device, is_train=True, 
+                          lr=args.lr, gp_weight=gp_weight, 
+                          num_classes=len(train_dataset.classes))
         trainer = Trainer(model, train_gen_per_iter=train_gen_per_iter, log_path=args.log_path)
         trainer.train(dataloader, args.epochs)
