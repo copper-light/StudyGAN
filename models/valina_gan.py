@@ -76,7 +76,7 @@ class GAN(Model):
         one = torch.ones((y.size(0), 1)).to(self.device)
         zero = torch.zeros((y.size(0), 1)).to(self.device)
 
-        x = torch.transpose(x, 3, 1)
+        # x = torch.permute(x, (0, 3, 1, 2))
         x = x.reshape(x.size(0), -1).to(self.device)
 
         self.D.train()
