@@ -205,7 +205,7 @@ if __name__ == "__main__":
     elif args.models == 'WGAN-GP':
         train_gen_per_iter = 5
         gp_weight = 10
-        model = WGAN_GP_C(input_dim=data_shape, output_dim=data_shape, name="WGAN-GP", device=device, is_train=True, lr=args.lr, gp_weight=gp_weight)
+        model = WGAN_GP(input_dim=data_shape, output_dim=data_shape, name="WGAN-GP", device=device, is_train=True, lr=args.lr, gp_weight=gp_weight)
         trainer = Trainer(model, train_gen_per_iter=train_gen_per_iter, log_path=args.log_path)
         trainer.train(dataloader, args.epochs)
 
