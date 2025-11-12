@@ -45,6 +45,7 @@
 ### 5. Cycle GAN
 * 2개의 판별기와 2개의 생성 모델을 통해 A->B, B->A 로 각각 단반향으로 스타일을 변환하는 모델
 * 두개의 모델의 로스를 합쳐서 역전파를 수행함 
+* 데이터셋: Apple to Orange: https://www.kaggle.com/datasets/jinzhengyangking/appletoorange
 ```bash
 python .\trainer.py --model "CYCLE-GAN" --dataset "a2o" --epochs 80 --lr 0.0002
 ```
