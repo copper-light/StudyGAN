@@ -15,7 +15,7 @@ def show_plt(images, n_rows=10, n_cols=10, show = False, save_path = None):
     if n_rows == 1:
         for i in range(n_cols):
             ax = axes[i]
-            image = images[image_index]  # numpy
+            image = images[0][i]  # numpy
             image = image * 0.5 + 0.5
             if images.shape[1] == 1:
                 image = image.reshape(28, 28)
@@ -31,7 +31,7 @@ def show_plt(images, n_rows=10, n_cols=10, show = False, save_path = None):
         for i in range(n_rows):
             for j in range(n_cols):
                 ax = axes[i,j]
-                image = images[image_index] # numpy
+                image = images[i][j] # numpy
                 image = image * 0.5 + 0.5
                 if images.shape[1] == 1:
                     image = image.reshape(28, 28)

@@ -3,6 +3,8 @@ from abc import ABC, abstractmethod
 
 class Model(ABC):
     def __init__(self, input_dim, output_dim, name="GAN", num_classes = 0, device = 'cpu', is_train = True, lr=1e-4):
+        if device is None:
+            device = 'cpu'
         self.device = device
         self.name = name
         self.num_classes = num_classes
@@ -34,7 +36,7 @@ class Model(ABC):
         pass
 
     @abstractmethod
-    def generate_image_to_numpy(self, size):
+    def generate_image_to_numpy(self, x, y):
         pass
 
     @abstractmethod

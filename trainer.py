@@ -23,6 +23,7 @@ from models.dcgan_b import DCGAN_B
 from models.wgan import WGAN
 from models.wgan_gp import WGAN_GP
 from models.wgan_gp_c import WGAN_GP_C
+from models.cycle_gan import CycleGAN
 
 TIME_FORMAT = ('%Y%m%d_%H%M%S')
 
@@ -56,11 +57,11 @@ class Trainer:
 
         self.writer = SummaryWriter(self.log_path)
 
-    def _epoch(self, epoch, dataloader):
+    def _epoch(self, epoch, train_loader, valid_loader):
         g_losses = []
         d_losses = []
         start_time = time.time()
-        progress = tqdm(enumerate(dataloader))
+        progress = tqdm(enumerate(train_loader))
         for step, (x, y) in progress:
             self.step += 1
             d_loss = self.model.train_discriminator(x, y)
@@ -71,20 +72,8 @@ class Trainer:
 
             progress.set_postfix({'epoch':epoch + 1, 'step': self.step, 'd_loss': np.mean(d_losses), 'g_loss': np.mean(g_losses)})
 
-        classes = 10
-        if self.model.num_classes > 0:
-            classes = self.model.num_classes
+        self._valid(epoch, valid_loader)
 
-        classes = [[i for _ in range(classes)] for i in range(classes)]
-        classes = torch.tensor(classes).to(self.model.device).reshape(-1)
-        
-        # classes = torch.tensor(list(range(classes))).to(self.model.device)
-        
-        images = self.model.generate_image_to_numpy(classes)
-        
-        save_image = show_plt(images, n_rows=10, n_cols=10, show=False, save_path=os.path.join(self.log_path, f'{self.model.name}_image_epoch_{epoch+1}.png'))
-        save_image = torch.tensor(save_image).permute(2,0,1).unsqueeze(dim=0)
-        
         self.losses['G'].append(np.mean(g_losses))
         self.losses['D'].append(np.mean(d_losses))
 
@@ -95,9 +84,18 @@ class Trainer:
 
         self.writer.add_scalar('d_loss', np.mean(d_losses), epoch)
         self.writer.add_scalar('g_loss', np.mean(g_losses), epoch)
+
+    def _valid(self, epoch, dataloader):
+        images = []
+        for x, y in dataloader:
+            images.append(self.model.generate_image_to_numpy(x, y))
+
+        images = np.array(images)
+        save_image = show_plt(images, n_rows=images.shape[0], n_cols=images.shape[1], show=False, save_path=os.path.join(self.log_path, f'{self.model.name}_image_epoch_{epoch+1}.png'))
+        save_image = torch.tensor(save_image).permute(2,0,1).unsqueeze(dim=0)
         self.writer.add_images('image', save_image, epoch)
 
-    def train(self, dataloader, num_epochs):
+    def train(self, train_loader, valid_loader, num_epochs):
         logging.info("params: ")
         for name, value in self.model.__dict__.items():
             logging.info(f"{name}: {value}")
@@ -110,7 +108,7 @@ class Trainer:
         best_loss = float('inf')
 
         for epoch in range(num_epochs):
-            self._epoch(epoch, dataloader)
+            self._epoch(epoch, train_loader, valid_loader)
 
             if best_loss > self.losses['G'][-1]:
                 best_loss = self.losses['G'][-1]
@@ -126,13 +124,13 @@ class Trainer:
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="GAN model trainer.")
-    parser.add_argument('--models', type=str, default='DCGAN', choices=['GAN', 'GAN-C', 'DCGAN', 'DCGAN-C', 'WGAN', 'WGAN-GP','WGAN-GP-C'])
+    parser.add_argument('--models', type=str, default='DCGAN', choices=['GAN', 'GAN-C', 'DCGAN', 'DCGAN-C', 'WGAN', 'WGAN-GP','WGAN-GP-C', 'CYCLE-GAN'])
     parser.add_argument('--lr', type=float, default=1e-4)
     parser.add_argument('--batch-size', type=int, default=32)
-    parser.add_argument('--epochs', type=int, default=40)
+    parser.add_argument('--epochs', type=int, default=1)
     parser.add_argument('--use-gpu', type=str2bool, default=True, choices=['True', 'False', 'true', 'false'])
     parser.add_argument('--log-path', type=str, default='logs/')
-    parser.add_argument('--dataset', type=str, default='cifar10', choices=['mnist', 'cifar10'])
+    parser.add_argument('--dataset', type=str, default='mnist', choices=['mnist', 'cifar10', 'a2o'])
     args = parser.parse_args()
 
     import torchvision.transforms as transforms
@@ -141,6 +139,10 @@ if __name__ == "__main__":
     from math import prod
 
     train_dataset = None
+    train_loader = None
+    valid_dataset = None
+    valid_loader = None
+
     dataloader = None
     data_shape = None
 
@@ -151,7 +153,13 @@ if __name__ == "__main__":
         ])
 
         train_dataset = datasets.MNIST(root="data/", train=True, transform=transforms)
-        dataloader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True)
+        train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True)
+
+        classes = 10
+        classes = [[(i, i) for _ in range(classes)] for i in range(classes)]
+        valid_dataset = torch.tensor(classes).reshape(-1)
+        valid_loader = DataLoader(train_dataset, batch_size=10, shuffle=False)
+
         data_shape = (1, 28, 28)
 
     elif args.dataset == 'cifar10':
@@ -161,10 +169,32 @@ if __name__ == "__main__":
         ])
         # https://www.cs.toronto.edu/~kriz/cifar-10-python.tar.gz
         train_dataset = datasets.CIFAR10(root="data/", train=True, download=True, transform=transforms)
-        dataloader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True)
+        train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True)
+
+        classes = 10
+        classes = [[(i, i) for _ in range(classes)] for i in range(classes)]
+        valid_dataset = torch.tensor(classes).reshape(-1)
+        valid_loader = DataLoader(train_dataset, batch_size=10, shuffle=False)
+
         data_shape = (3, 32, 32)
 
-    assert dataloader is not None, "Not found dataset"
+    elif args.dataset == 'a2o': # apple2orange
+        from datasets.styletransfer import StyleTransferDataset
+
+        transforms = transforms.Compose([
+            transforms.ToTensor(),
+            transforms.Resize((128, 128)),
+            transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+        ])
+        train_dataset = StyleTransferDataset(root="data/apple2orange/", train=True, transform=transforms)
+        train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True)
+        valid_dataset = StyleTransferDataset(root="data/apple2orange/", limit=10, train=False, transform=transforms)
+        valid_loader = DataLoader(valid_dataset, batch_size=1, shuffle=True)
+
+        data_shape = (3, 128, 128)
+
+
+    assert train_loader is not None, "Not found dataset"
 
     device = 'cpu'
     if args.use_gpu:
@@ -175,39 +205,39 @@ if __name__ == "__main__":
         model = GAN(input_dim=data_shape, output_dim=data_shape, name="GAN", device=device, is_train=True, lr=args.lr)
         train_gen_per_iter = 1
         trainer = Trainer(model, train_gen_per_iter = train_gen_per_iter, log_path = args.log_path)
-        trainer.train(dataloader, args.epochs)
+        trainer.train(train_loader, valid_loader, args.epochs)
 
     elif args.models == 'GAN-C':
         model = GAN(input_dim=data_shape, output_dim=data_shape, name="GAN-Conditional", device=device, is_train=True, lr=args.lr, num_classes=len(train_dataset.classes))
         train_gen_per_iter = 1
         trainer = Trainer(model, train_gen_per_iter=train_gen_per_iter, log_path = args.log_path)
-        trainer.train(dataloader, args.epochs)
+        trainer.train(train_loader, valid_loader, args.epochs)
 
     elif args.models == 'DCGAN':
         model = DCGAN(input_dim=data_shape, output_dim=data_shape, name="DCGAN", device=device, is_train=True, lr=args.lr)
         train_gen_per_iter = 1
         trainer = Trainer(model, train_gen_per_iter=train_gen_per_iter, log_path=args.log_path)
-        trainer.train(dataloader, args.epochs)
+        trainer.train(train_loader, valid_loader, args.epochs)
 
     elif args.models == 'DCGAN-C':
         model = DCGAN(input_dim=data_shape, output_dim=data_shape, name="DCGAN-Conditional", device=device, is_train=True, lr=args.lr, num_classes=len(train_dataset.classes))
         train_gen_per_iter = 1
         trainer = Trainer(model, train_gen_per_iter=train_gen_per_iter, log_path=args.log_path)
-        trainer.train(dataloader, args.epochs)
+        trainer.train(train_loader, valid_loader, args.epochs)
 
     elif args.models == 'WGAN':
         clip_threshold = 0.1
         train_gen_per_iter = 5
         model = WGAN(input_dim=data_shape, output_dim=data_shape, name="WGAN", device=device, is_train=True, lr=args.lr, clip_threshold = clip_threshold)
         trainer = Trainer(model, train_gen_per_iter=train_gen_per_iter, log_path=args.log_path)
-        trainer.train(dataloader, args.epochs)
+        trainer.train(train_loader, valid_loader, args.epochs)
 
     elif args.models == 'WGAN-GP':
         train_gen_per_iter = 5
         gp_weight = 10
         model = WGAN_GP(input_dim=data_shape, output_dim=data_shape, name="WGAN-GP", device=device, is_train=True, lr=args.lr, gp_weight=gp_weight)
         trainer = Trainer(model, train_gen_per_iter=train_gen_per_iter, log_path=args.log_path)
-        trainer.train(dataloader, args.epochs)
+        trainer.train(train_loader, valid_loader, args.epochs)
 
     elif args.models == 'WGAN-GP-C':
         train_gen_per_iter = 5
@@ -217,4 +247,12 @@ if __name__ == "__main__":
                           lr=args.lr, gp_weight=gp_weight, 
                           num_classes=len(train_dataset.classes))
         trainer = Trainer(model, train_gen_per_iter=train_gen_per_iter, log_path=args.log_path)
-        trainer.train(dataloader, args.epochs)
+        trainer.train(train_loader, valid_loader, args.epochs)
+
+    elif args.models == 'CYCLE-GAN':
+        train_gen_per_iter = 1
+        model = CycleGAN(input_dim=data_shape, output_dim=data_shape,
+                          name="CYCLE-GAN", device=device, is_train=True,
+                          lr=args.lr)
+        trainer = Trainer(model, train_gen_per_iter=train_gen_per_iter, log_path=args.log_path)
+        trainer.train(train_loader, valid_loader, args.epochs)

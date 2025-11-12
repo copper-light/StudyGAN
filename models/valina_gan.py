@@ -113,11 +113,11 @@ class GAN(Model):
             seed = torch.cat((seed, onehot), dim=1)
         return seed
 
-    def generate_image_to_numpy(self, classes):
+    def generate_image_to_numpy(self, x, y):
         images = None
         self.G.eval()
         with torch.no_grad():
-            images = self.G(self._generate_seed(classes))
+            images = self.G(self._generate_seed(y))
             images = images.reshape(-1, *self.output_dim).cpu().numpy()
         return images
 
