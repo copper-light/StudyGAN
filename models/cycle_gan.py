@@ -1,6 +1,9 @@
 import torch
 import torch.nn as nn
 import numpy as np
+import itertools
+
+from functools import partial
 
 from models.valina_gan import GAN
 
@@ -113,17 +116,17 @@ class CycleGAN(GAN):
         self.D_ba = Discriminator().to(device)
 
         if is_train:
-            self.G_ab_optimizer = torch.optim.Adam(self.G_ab.parameters(), lr=lr, betas=(0.9, 0.999))
-            self.D_ab_optimizer = torch.optim.Adam(self.D_ab.parameters(), lr=lr, betas=(0.9, 0.999))
-
-            self.G_ba_optimizer = torch.optim.Adam(self.G_ba.parameters(), lr=lr, betas=(0.9, 0.999))
-            self.D_ba_optimizer = torch.optim.Adam(self.D_ba.parameters(), lr=lr, betas=(0.9, 0.999))
+            adam = partial(torch.optim.Adam, lr=lr, betas=(0.5, 0.999))
+            self.G_optimizer = adam(itertools.chain(self.G_ab.parameters(), self.G_ba.parameters()))
+            self.D_optimizer = adam(itertools.chain(self.D_ab.parameters(), self.D_ba.parameters()))
 
             self.criterion_mse = nn.MSELoss()
             self.criterion_l1 = nn.L1Loss()
 
 
-    def _train_gen(self, g, gen_x, d, opti, x, y):
+    def _train_gen(self, g, gen_x, d, x, y):
+        x = x.to(self.device)
+        y = y.to(self.device)
         fake_x = gen_x(y).detach()
         one = torch.ones(x.size(0), 1, 16, 16).to(self.device)
 
@@ -140,45 +143,44 @@ class CycleGAN(GAN):
 
         loss = (self.w_validation * loss_validation) + (self.w_reconstruction * loss_reconstruction) + (self.w_identity * loss_identity)
 
-        opti.zero_grad()
-        loss.backward()
-        opti.step()
-
-        return loss.item()
+        return loss
 
 
-    def _train_disc(self, g, d, opti, x):
+    def _train_disc(self, g, d, x):
+        x = x.to(self.device)
         fake_x = g(x).detach()
         one = torch.ones(x.size(0), 1, 16, 16).to(self.device)
         zero = torch.zeros(x.size(0), 1, 16, 16).to(self.device)
 
         pred_real = d(x)
         loss_real = self.criterion_mse(pred_real, one)
-        opti.zero_grad()
-        loss_real.backward()
-        opti.step()
 
         pred_fake = d(fake_x)
         loss_fake = self.criterion_mse(pred_fake, zero)
-        opti.zero_grad()
-        loss_fake.backward()
-        opti.step()
 
-        return (loss_real.item() + loss_fake.item()) * 0.5
+        return loss_real + loss_fake
 
     def train_generator(self, img_a, img_b):
-        loss_ab = self._train_gen(self.G_ab, self.G_ba, self.D_ab, self.G_ab_optimizer, img_a, img_b)
-        loss_ba = self._train_gen(self.G_ba, self.G_ab, self.D_ba, self.G_ba_optimizer, img_b, img_a)
-        loss = (loss_ab + loss_ba) * 0.5
+        loss_ab = self._train_gen(self.G_ab, self.G_ba, self.D_ab, img_a, img_b)
+        loss_ba = self._train_gen(self.G_ba, self.G_ab, self.D_ba, img_b, img_a)
+        loss = (loss_ab + loss_ba)
 
-        return loss
+        self.G_optimizer.zero_grad()
+        loss.backward()
+        self.G_optimizer.step()
+
+        return loss.item()
 
     def train_discriminator(self, img_a, img_b):
-        loss_a = self._train_disc(self.G_ab, self.D_ab, self.D_ab_optimizer, img_a)
-        loss_b = self._train_disc(self.G_ba, self.D_ba, self.D_ba_optimizer, img_b)
+        loss_a = self._train_disc(self.G_ab, self.D_ab, img_a)
+        loss_b = self._train_disc(self.G_ba, self.D_ba, img_b)
         loss = (loss_a + loss_b) * 0.5
 
-        return loss
+        self.D_optimizer.zero_grad()
+        loss.backward()
+        self.D_optimizer.step()
+
+        return loss.item()
 
     def _generate_seed(self, labels):
         return None
@@ -202,41 +204,34 @@ class CycleGAN(GAN):
 
             images.append(img_a[0].cpu().numpy())
             images.append(fake_b[0].cpu().numpy())
-            images.append(recon_b[0].cpu().numpy())
-            images.append(iden_b[0].cpu().numpy())
+            images.append(recon_a[0].cpu().numpy())
+            images.append(iden_a[0].cpu().numpy())
 
             images.append(img_b[0].cpu().numpy())
             images.append(fake_a[0].cpu().numpy())
-            images.append(recon_a[0].cpu().numpy())
-            images.append(iden_a[0].cpu().numpy())
+            images.append(recon_b[0].cpu().numpy())
+            images.append(iden_b[0].cpu().numpy())
 
         return np.array(images)
 
     def get_checkpoint(self):
         model = {'G_ab': self.G_ab.state_dict(),
                  'D_ab': self.D_ab.state_dict(),
-                 'G_ab_optimizer': self.G_ab_optimizer.state_dict(),
-                 'D_ab_optimizer': self.D_ab_optimizer.state_dict(),
                  'G_ba': self.G_ba.state_dict(),
                  'D_ba': self.D_ba.state_dict(),
-                 'G_ba_optimizer': self.G_ba_optimizer.state_dict(),
-                 'D_ba_optimizer': self.D_ba_optimizer.state_dict()}
+                 'G_optimizer': self.G_optimizer.state_dict(),
+                 'D_optimizer': self.D_optimizer.state_dict()}
         return model
 
     def load_checkpoint(self, checkpoint):
         self.G_ab.load_state_dict(checkpoint['G_ab'])
         self.D_ab.load_state_dict(checkpoint['D_ab'])
-        self.G_ab_optimizer = torch.optim.Adam(self.G_ab.parameters())
-        self.D_ab_optimizer = torch.optim.Adam(self.D_ab.parameters())
-        self.G_ab_optimizer.load_state_dict(checkpoint['G_ab_optimizer'])
-        self.D_ab_optimizer.load_state_dict(checkpoint['D_ab_optimizer'])
-
         self.G_ba.load_state_dict(checkpoint['G_ba'])
         self.D_ba.load_state_dict(checkpoint['D_ba'])
-        self.G_ba_optimizer = torch.optim.Adam(self.G_ba.parameters())
-        self.D_ba_optimizer = torch.optim.Adam(self.D_ba.parameters())
-        self.G_ba_optimizer.load_state_dict(checkpoint['G_ba_optimizer'])
-        self.D_ba_optimizer.load_state_dict(checkpoint['D_ba_optimizer'])
+        self.G_optimizer = torch.optim.Adam(itertools.chain(self.G_ab.parameters(), self.G_ba.parameters()))
+        self.D_optimizer = torch.optim.Adam(itertools.chain(self.D_ab.parameters(), self.D_ba.parameters()))
+        self.G_optimizer.load_state_dict(checkpoint['G_optimizer'])
+        self.D_optimizer.load_state_dict(checkpoint['D_optimizer'])
 
 
 

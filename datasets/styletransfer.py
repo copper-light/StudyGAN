@@ -15,7 +15,8 @@ class StyleTransferDataset(Dataset):
         self.transform = transform
         self.cache = cache
         self.limit = limit
-
+        self.cachefile = None
+        
         middle_path = 'train'
         if not train:
             middle_path = 'test'
@@ -35,7 +36,6 @@ class StyleTransferDataset(Dataset):
             self.a = self.cachefile['trainA'][:]
             self.b = self.cachefile['trainB'][:]
         else:
-            self.cachefile = None
             self.a = glob(os.path.join(self.root, f'{middle_path}A/*.jpg'))
             self.b = glob(os.path.join(self.root, f'{middle_path}B/*.jpg'))
 
@@ -50,12 +50,6 @@ class StyleTransferDataset(Dataset):
 
     def __len__(self):
         return self.len
-
-    def __del__(self):
-        if self.cachefile is not None:
-            self.a = None
-            self.b = None
-            self.cachefile.close()
 
     def __getitem__(self, index):
         a = None
@@ -78,21 +72,21 @@ class StyleTransferDataset(Dataset):
 
 if __name__ == '__main__':
     from torchvision import transforms
+    from torch.utils.data import DataLoader
 
-    train_dataset = StyleTransferDataset("../data/apple2orange", train=True, cache=False, transform=transforms.Compose([
+    dataset = StyleTransferDataset("../data/apple2orange", train=True, cache=False, transform=transforms.Compose([
         transforms.ToTensor()
     ]))
 
-    test_dataset = StyleTransferDataset("../data/apple2orange", train=False, cache=False, transform=transforms.Compose([
-        transforms.ToTensor()
-    ]))
+    loader = DataLoader(dataset, batch_size=4, shuffle=True)
 
-    print("train_dataset", len(train_dataset))
-    for a, b in train_dataset:
+    print("train_dataset", len(dataset))
+    for a, b in dataset:
         print(a, b)
         break
 
-    print("test_dataset", len(test_dataset))
-    for a, b in test_dataset:
-        print(a.shape, b.shape)
-        break
+    cnt = 0
+    for a, b in loader:
+        cnt += 1
+
+

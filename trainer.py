@@ -70,7 +70,7 @@ class Trainer:
                 g_loss = self.model.train_generator(x, y)
                 g_losses.append(g_loss)
 
-            progress.set_postfix({'epoch':epoch + 1, 'step': self.step, 'd_loss': np.mean(d_losses), 'g_loss': np.mean(g_losses)})
+            progress.set_postfix({'epoch':epoch, 'step': self.step, 'd_loss': np.mean(d_losses), 'g_loss': np.mean(g_losses)})
 
         self._valid(epoch, valid_loader)
 
@@ -80,7 +80,7 @@ class Trainer:
         s = int(time.time() - start_time)
         m = s // 60
         s = s % 60
-        logging.info(f"elapsed: {m:02d}:{s:02d}, epoch: {epoch + 1}, step: {self.step}, d_loss: {np.mean(d_losses):.04f}, g_loss: {np.mean(g_losses):.04f}")
+        logging.info(f"elapsed: {m:02d}:{s:02d}, epoch: {epoch}, step: {self.step}, d_loss: {np.mean(d_losses):.04f}, g_loss: {np.mean(g_losses):.04f}")
 
         self.writer.add_scalar('d_loss', np.mean(d_losses), epoch)
         self.writer.add_scalar('g_loss', np.mean(g_losses), epoch)
@@ -107,7 +107,7 @@ class Trainer:
 
         best_loss = float('inf')
 
-        for epoch in range(num_epochs):
+        for epoch in range(1, num_epochs+1):
             self._epoch(epoch, train_loader, valid_loader)
 
             if best_loss > self.losses['G'][-1]:

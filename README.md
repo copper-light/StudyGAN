@@ -42,6 +42,13 @@
     * 점점 0 에 수렴함에 따라 성능이 올라가는 것을 볼 수 있음
     * 모델의 학습 진척도를 짐작할 수 있는 수단으로 활용될 수 있을 듯
 
+### 5. Cycle GAN
+* 2개의 판별기와 2개의 생성 모델을 통해 A->B, B->A 로 각각 단반향으로 스타일을 변환하는 모델
+* 두개의 모델의 로스를 합쳐서 역전파를 수행함 
+```bash
+python .\trainer.py --model "CYCLE-GAN" --dataset "a2o" --epochs 80 --lr 0.0002
+```
+
 
 ### How to train a model
 * mnist 데이터를 사용하고 별도로 다운받아서 data/MNIST/raw/* 폴더 아래 바이너리 파일들 위치시킬 것

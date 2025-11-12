@@ -21,7 +21,7 @@ def show_plt(images, n_rows=10, n_cols=10, show = False, save_path = None):
                 image = image.reshape(28, 28)
                 ax.imshow(image, cmap='gray')
             else:
-                image = np.transpose(image, (2, 1, 0))
+                image = np.transpose(image, (1, 2, 0))
                 image = image * 255
                 image = image.astype(np.uint8)
                 ax.imshow(image)
@@ -37,7 +37,7 @@ def show_plt(images, n_rows=10, n_cols=10, show = False, save_path = None):
                     image = image.reshape(28, 28)
                     ax.imshow(image, cmap='gray')
                 else:
-                    image = np.transpose(image, (2, 1, 0))
+                    image = np.transpose(image, (1, 2, 0))
                     image = image * 255
                     image = image.astype(np.uint8)
                     ax.imshow(image)
@@ -53,6 +53,8 @@ def show_plt(images, n_rows=10, n_cols=10, show = False, save_path = None):
     plt.savefig(buf, format='jpg', bbox_inches='tight', pad_inches=0)
     buf.seek(0)
     im = Image.open(buf)
+    if save_path is not None:
+        im.save(save_path)
     image_array = np.array(im)
     buf.close()
 
