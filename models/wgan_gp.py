@@ -125,7 +125,7 @@ class WGAN_GP(GAN):
         self.D_optimizer.step()
 
         wasserstein_loss = real_loss - fake_loss
-        return wasserstein_loss.item()
+        return loss.item(), {'wasserstein_loss': wasserstein_loss.item()}
 
     def train_generator(self, x, target):
         self.G.train()
@@ -139,7 +139,7 @@ class WGAN_GP(GAN):
         self.G_optimizer.zero_grad()
         loss.backward()
         self.G_optimizer.step()
-        return loss.item()
+        return loss.item(), None
 
     def _generate_interpolated_image(self, real_x, fake_x):
         batch_size = real_x.size()[0]

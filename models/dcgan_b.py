@@ -117,7 +117,7 @@ class DCGAN_B(GAN):
         loss.backward()
         self.G_optimizer.step()
 
-        return loss.item()
+        return loss.item(), None
 
     def train_discriminator(self, x, y):
         one = torch.ones((y.size(0), 1)).to(self.device)
@@ -145,7 +145,8 @@ class DCGAN_B(GAN):
         fake_loss.backward()
         self.D_optimizer.step()
 
-        return real_loss.item(), fake_loss.item()
+        loss = (real_loss + fake_loss) * .5
+        return loss, {"real_loss": real_loss.item(), "fake_loss": fake_loss.item()}
 
     def _generate_seed(self, labels):
         seed = torch.randn(labels.size(0), 100).to(self.device)

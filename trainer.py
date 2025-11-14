@@ -23,7 +23,7 @@ from models.dcgan_b import DCGAN_B
 from models.wgan import WGAN
 from models.wgan_gp import WGAN_GP
 from models.wgan_gp_c import WGAN_GP_C
-from models.cycle_gan import CycleGAN
+from models.cycle_gan_unet import CycleGAN
 
 TIME_FORMAT = ('%Y%m%d_%H%M%S')
 
@@ -60,14 +60,27 @@ class Trainer:
     def _epoch(self, epoch, train_loader, valid_loader):
         g_losses = []
         d_losses = []
+        monitor_values = {}
         start_time = time.time()
         progress = tqdm(enumerate(train_loader))
         for step, (x, y) in progress:
             self.step += 1
-            d_loss = self.model.train_discriminator(x, y)
+            d_loss, d_values = self.model.train_discriminator(x, y)
             d_losses.append(d_loss)
+
+            if d_values is not None:
+                for name, value in d_values.items():
+                    if name not in monitor_values:
+                        monitor_values[name] = []
+                    monitor_values[name].append(value)
+
             if step % self.train_gen_per_iter == 0:
-                g_loss = self.model.train_generator(x, y)
+                g_loss, g_values = self.model.train_generator(x, y)
+                if g_values is not None:
+                    for name, value in g_values.items():
+                        if name not in monitor_values:
+                            monitor_values[name] = []
+                        monitor_values[name].append(value)
                 g_losses.append(g_loss)
 
             progress.set_postfix({'epoch':epoch, 'step': self.step, 'd_loss': np.mean(d_losses), 'g_loss': np.mean(g_losses)})
@@ -81,9 +94,13 @@ class Trainer:
         m = s // 60
         s = s % 60
         logging.info(f"elapsed: {m:02d}:{s:02d}, epoch: {epoch}, step: {self.step}, d_loss: {np.mean(d_losses):.04f}, g_loss: {np.mean(g_losses):.04f}")
+        for name, value in monitor_values.items():
+            logging.info(f"  -{name}: {np.mean(value):.04f}")
+            self.writer.add_scalar(name, np.mean(value), epoch)
 
         self.writer.add_scalar('d_loss', np.mean(d_losses), epoch)
         self.writer.add_scalar('g_loss', np.mean(g_losses), epoch)
+
 
     def _valid(self, epoch, dataloader):
         images = []
@@ -130,7 +147,7 @@ if __name__ == "__main__":
     parser.add_argument('--epochs', type=int, default=1)
     parser.add_argument('--use-gpu', type=str2bool, default=True, choices=['True', 'False', 'true', 'false'])
     parser.add_argument('--log-path', type=str, default='logs/')
-    parser.add_argument('--dataset', type=str, default='mnist', choices=['mnist', 'cifar10', 'a2o'])
+    parser.add_argument('--dataset', type=str, default='mnist', choices=['mnist', 'cifar10', 'apple2orange', 'monet2photo'])
     args = parser.parse_args()
 
     import torchvision.transforms as transforms
@@ -178,7 +195,7 @@ if __name__ == "__main__":
 
         data_shape = (3, 32, 32)
 
-    elif args.dataset == 'a2o': # apple2orange
+    elif args.dataset == 'apple2orange': # apple2orange
         from datasets.styletransfer import StyleTransferDataset
 
         transforms = transforms.Compose([
@@ -192,6 +209,21 @@ if __name__ == "__main__":
         valid_loader = DataLoader(valid_dataset, batch_size=1, shuffle=True)
 
         data_shape = (3, 128, 128)
+
+    elif args.dataset == 'monet2photo': # apple2orange
+        from datasets.styletransfer import StyleTransferDataset
+
+        transforms = transforms.Compose([
+            transforms.ToTensor(),
+            transforms.Resize((256, 256)),
+            transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+        ])
+        train_dataset = StyleTransferDataset(root="data/monet2photo/", limit=100, train=True, transform=transforms)
+        train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True)
+        valid_dataset = StyleTransferDataset(root="data/monet2photo/", limit=10, train=False, transform=transforms)
+        valid_loader = DataLoader(valid_dataset, batch_size=1, shuffle=True)
+
+        data_shape = (3, 256, 256)
 
 
     assert train_loader is not None, "Not found dataset"
@@ -252,7 +284,8 @@ if __name__ == "__main__":
     elif args.models == 'CYCLE-GAN':
         train_gen_per_iter = 1
         model = CycleGAN(input_dim=data_shape, output_dim=data_shape,
-                          name="CYCLE-GAN", device=device, is_train=True,
-                          lr=args.lr)
+                         name="CYCLE-GAN", device=device, is_train=True,
+                         lr=args.lr,
+                         lambda_validation = 1, lambda_reconstruction = 10, lambda_identity = 2)
         trainer = Trainer(model, train_gen_per_iter=train_gen_per_iter, log_path=args.log_path)
         trainer.train(train_loader, valid_loader, args.epochs)

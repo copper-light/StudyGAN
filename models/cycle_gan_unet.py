@@ -54,14 +54,13 @@ class Upsample(nn.Module):
 
 
 class Discriminator(nn.Module):
-    def __init__(self):
+    def __init__(self, n_filters=32):
         super().__init__()
-        base_channel = 32
-        self.block1 = Downsample(3, base_channel, norm = False, activation = 'lrelu') # 64
-        self.block2 = Downsample(base_channel, base_channel * 2, activation='lrelu') # 32
-        self.block3 = Downsample(base_channel * 2, base_channel * 4, activation='lrelu') # 16
-        self.block4 = Downsample(base_channel * 4, base_channel * 8, stride=1, activation='lrelu')
-        self.block5 = Downsample(base_channel * 8, 1, norm=False, stride=1, activation=None)
+        self.block1 = Downsample(3, n_filters, norm = False, activation = 'lrelu') # 64
+        self.block2 = Downsample(n_filters, n_filters * 2, activation='lrelu') # 32
+        self.block3 = Downsample(n_filters * 2, n_filters * 4, activation='lrelu') # 16
+        self.block4 = Downsample(n_filters * 4, n_filters * 8, stride=1, activation='lrelu')
+        self.block5 = Downsample(n_filters * 8, 1, norm=False, stride=1, activation=None)
 
 
     def forward(self, x):
@@ -74,18 +73,17 @@ class Discriminator(nn.Module):
 
 
 class Generator(nn.Module):
-    def __init__(self):
+    def __init__(self, n_filters=32):
         super().__init__()
-        base_channel = 32
-        self.d1 = Downsample(3, base_channel) # 32
-        self.d2 = Downsample(base_channel, base_channel * 2) # 64
-        self.d3 = Downsample(base_channel * 2, base_channel * 4) # 128
-        self.d4 = Downsample(base_channel * 4, base_channel * 8) # 256
+        self.d1 = Downsample(3, n_filters) # 32
+        self.d2 = Downsample(n_filters, n_filters * 2) # 64
+        self.d3 = Downsample(n_filters * 2, n_filters * 4) # 128
+        self.d4 = Downsample(n_filters * 4, n_filters * 8) # 256
 
-        self.u1 = Upsample(base_channel * 8, base_channel * 4) # 128 + 128
-        self.u2 = Upsample(base_channel * 8, base_channel * 2) # 64 + 64
-        self.u3 = Upsample(base_channel * 4, base_channel) # 32 + 32
-        self.u4 = Upsample(base_channel * 2, 3, norm = False, activation='tanh', use_skip_connection=False)
+        self.u1 = Upsample(n_filters * 8, n_filters * 4) # 128 + 128
+        self.u2 = Upsample(n_filters * 8, n_filters * 2) # 64 + 64
+        self.u3 = Upsample(n_filters * 4, n_filters) # 32 + 32
+        self.u4 = Upsample(n_filters * 2, 3, norm = False, activation='tanh', use_skip_connection=False)
 
     def forward(self, x):
         dx1 = self.d1(x)
@@ -102,18 +100,21 @@ class Generator(nn.Module):
 
 
 class CycleGAN(GAN):
-    def __init__(self, input_dim, output_dim, name, device, is_train, lr, w_validation = 1, w_reconstruction = 10, w_identity = 2):
+    def __init__(self, input_dim, output_dim, name, device, is_train, lr, gen_n_filters=32, disc_n_filters=32, lambda_validation = 1, lambda_reconstruction = 10, lambda_identity = 2):
         super().__init__(input_dim, output_dim, name, 0, device, is_train, lr)
-        self.w_validation = w_validation
-        self.w_reconstruction = w_reconstruction
-        self.w_identity = w_identity
+        self.lambda_validation = lambda_validation
+        self.lambda_reconstruction = lambda_reconstruction
+        self.lambda_identity = lambda_identity
+        self.patch_size = input_dim[-1] // (2 ** 3)
+        self.gen_n_filters = gen_n_filters
+        self.disc_n_filters = disc_n_filters
 
     def _setup_model(self, input_dim, output_dim, num_classes, device, is_train, lr):
-        self.G_ab = Generator().to(device)
-        self.D_ab = Discriminator().to(device)
+        self.G_ab = Generator(self.gen_n_filters).to(device)
+        self.D_ab = Discriminator(self.disc_n_filters).to(device)
 
-        self.G_ba = Generator().to(device)
-        self.D_ba = Discriminator().to(device)
+        self.G_ba = Generator(self.gen_n_filters).to(device)
+        self.D_ba = Discriminator(self.disc_n_filters).to(device)
 
         if is_train:
             adam = partial(torch.optim.Adam, lr=lr, betas=(0.5, 0.999))
@@ -128,7 +129,7 @@ class CycleGAN(GAN):
         x = x.to(self.device)
         y = y.to(self.device)
         fake_x = gen_x(y).detach()
-        one = torch.ones(x.size(0), 1, 16, 16).to(self.device)
+        one = torch.ones(x.size(0), 1, self.patch_size, self.patch_size).to(self.device)
 
         g.train()
         fake_y = g(x).detach()
@@ -141,7 +142,7 @@ class CycleGAN(GAN):
         identity_y = g(y)
         loss_identity = self.criterion_l1(identity_y, y)
 
-        loss = (self.w_validation * loss_validation) + (self.w_reconstruction * loss_reconstruction) + (self.w_identity * loss_identity)
+        loss = (self.lambda_validation * loss_validation) + (self.lambda_reconstruction * loss_reconstruction) + (self.lambda_identity * loss_identity)
 
         return loss
 
@@ -149,8 +150,8 @@ class CycleGAN(GAN):
     def _train_disc(self, g, d, x):
         x = x.to(self.device)
         fake_x = g(x).detach()
-        one = torch.ones(x.size(0), 1, 16, 16).to(self.device)
-        zero = torch.zeros(x.size(0), 1, 16, 16).to(self.device)
+        one = torch.ones(x.size(0), 1, self.patch_size, self.patch_size).to(self.device)
+        zero = torch.zeros(x.size(0), 1, self.patch_size, self.patch_size).to(self.device)
 
         pred_real = d(x)
         loss_real = self.criterion_mse(pred_real, one)
@@ -169,7 +170,7 @@ class CycleGAN(GAN):
         loss.backward()
         self.G_optimizer.step()
 
-        return loss.item()
+        return loss.item(), None
 
     def train_discriminator(self, img_a, img_b):
         loss_a = self._train_disc(self.G_ab, self.D_ab, img_a)
@@ -180,7 +181,7 @@ class CycleGAN(GAN):
         loss.backward()
         self.D_optimizer.step()
 
-        return loss.item()
+        return loss.item(), None
 
     def _generate_seed(self, labels):
         return None

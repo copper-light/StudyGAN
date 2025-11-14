@@ -123,7 +123,7 @@ class WGAN(GAN):
                 for param in self.D.parameters():
                     param.data.clamp_(-self.clip_threshold, self.clip_threshold)
 
-        return loss.item()
+        return loss.item(), None
 
     def train_generator(self, x, target):
         real_target = torch.ones(x.size(0), 1).to(self.device)
@@ -136,7 +136,7 @@ class WGAN(GAN):
         self.G_optimizer.zero_grad()
         loss.backward()
         self.G_optimizer.step()
-        return loss.item()
+        return loss.item(), None
 
 
 if __name__ == '__main__':

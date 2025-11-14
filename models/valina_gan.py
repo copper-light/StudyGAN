@@ -53,7 +53,7 @@ class GAN(Model):
             self.D_optimizer = torch.optim.Adam(self.D.parameters(), lr=lr)
             self.criterion = nn.BCELoss()
 
-    def train_generator(self, x, y):
+    def train_generator(self, x, y) -> tuple[float, dict]:
         one = torch.ones((y.size(0), 1)).to(self.device)
         self.G.train()
 
@@ -70,9 +70,9 @@ class GAN(Model):
         loss.backward()
         self.G_optimizer.step()
 
-        return loss.item()
+        return loss.item(), None
 
-    def train_discriminator(self, x, y):
+    def train_discriminator(self, x, y) -> tuple[float, dict]:
         one = torch.ones((y.size(0), 1)).to(self.device)
         zero = torch.zeros((y.size(0), 1)).to(self.device)
 
@@ -104,7 +104,8 @@ class GAN(Model):
         fake_loss.backward()
         self.D_optimizer.step()
 
-        return real_loss.item(), fake_loss.item()
+        loss = (real_loss.item() + fake_loss.item()) * .5
+        return loss.item(), {"real_loss": real_loss.item(), "fake_loss": fake_loss.item()}
 
     def _generate_seed(self, labels):
         seed = torch.randn(labels.size(0), 100).to(self.device)
@@ -138,9 +139,14 @@ class GAN(Model):
 
 
 if __name__ == "__main__":
-    gan = GAN(input_dim=(28*28), output_dim= (28*28))
+    gan = GAN(input_dim=(1, 28, 28), output_dim= (1, 28, 28))
     labels = torch.tensor([0, 1])
-    images = gan.generate_image_to_numpy(labels)
+    images = gan.generate_image_to_numpy(None, labels)
+
+
+    gan.train_discriminator(
+        torch.randn(5, 28*28), torch.randn(5, 1)
+    )
 
     # import matplotlib.pyplot as plt
     # plt.imshow(images[0])

@@ -1,5 +1,7 @@
-import torch.nn as nn
+import numpy as np
+import torch
 from abc import ABC, abstractmethod
+from typeguard import typechecked
 
 class Model(ABC):
     def __init__(self, input_dim, output_dim, name="GAN", num_classes = 0, device = 'cpu', is_train = True, lr=1e-4):
@@ -24,11 +26,11 @@ class Model(ABC):
         pass
 
     @abstractmethod
-    def train_discriminator(self, x, target):
+    def train_discriminator(self, x, target) -> tuple[float, dict]:
         pass
 
     @abstractmethod
-    def train_generator(self, x, target):
+    def train_generator(self, x, target) -> tuple[torch.Tensor, dict]:
         pass
 
     @abstractmethod
@@ -47,7 +49,8 @@ class Model(ABC):
     def load_checkpoint(self, checkpoint):
         pass
 
-if __name__ == '__main__':
-    model = Model(10, 20)
-    for name, value in model.__dict__.items():
-        print(f"{name}: {value}")
+#
+# if __name__ == '__main__':
+#     model = Model(10, 20)
+#     for name, value in model.__dict__.items():
+#         print(f"{name}: {value}")
