@@ -101,13 +101,13 @@ class Generator(nn.Module):
 
 class CycleGAN(GAN):
     def __init__(self, input_dim, output_dim, name, device, is_train, lr, gen_n_filters=32, disc_n_filters=32, lambda_validation = 1, lambda_reconstruction = 10, lambda_identity = 2):
-        super().__init__(input_dim, output_dim, name, 0, device, is_train, lr)
         self.lambda_validation = lambda_validation
         self.lambda_reconstruction = lambda_reconstruction
         self.lambda_identity = lambda_identity
         self.patch_size = input_dim[-1] // (2 ** 3)
         self.gen_n_filters = gen_n_filters
         self.disc_n_filters = disc_n_filters
+        super().__init__(input_dim, output_dim, name, 0, device, is_train, lr)
 
     def _setup_model(self, input_dim, output_dim, num_classes, device, is_train, lr):
         self.G_ab = Generator(self.gen_n_filters).to(device)

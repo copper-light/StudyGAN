@@ -4,10 +4,10 @@ import torch.nn as nn
 
 from functools import partial
 
-from models.cycle_gan_unet import CycleGAN, Discriminator
+from models.cycle_gan_unet import CycleGAN, Discriminator, Downsample, Upsample
 
 class ResidualBlock(nn.Module):
-    def __init__(self, input_channels, output_channels, kernel_size, stride, padding):
+    def __init__(self, input_channels, output_channels, kernel_size, stride, padding='same'):
         super(ResidualBlock, self).__init__()
         block = nn.Sequential()
         block.append(nn.Conv2d(input_channels, output_channels, kernel_size=kernel_size, stride=stride, padding=padding))
@@ -20,12 +20,26 @@ class ResidualBlock(nn.Module):
 
 
 class Generator(nn.Module):
-    def __init__(self, gen_n_filters):
+    def __init__(self, n_filters):
         super(Generator, self).__init__()
-        self.gen_n_filters = gen_n_filters
+        self.model = nn.Sequential(
+            Downsample(3, n_filters, kernel_size=7, stride=1),
+            Downsample(n_filters, n_filters * 2, kernel_size=3, stride=2),
+            Downsample(n_filters * 2, n_filters * 4, kernel_size=3, stride=2),
+            ResidualBlock(n_filters * 4, n_filters * 4, kernel_size=3, stride=1),
+            ResidualBlock(n_filters * 4, n_filters * 4, kernel_size=3, stride=1),
+            ResidualBlock(n_filters * 4, n_filters * 4, kernel_size=3, stride=1),
+            ResidualBlock(n_filters * 4, n_filters * 4, kernel_size=3, stride=1),
+            ResidualBlock(n_filters * 4, n_filters * 4, kernel_size=3, stride=1),
+            ResidualBlock(n_filters * 4, n_filters * 4, kernel_size=3, stride=1),
+            ResidualBlock(n_filters * 4, n_filters * 4, kernel_size=3, stride=1),
+            Upsample(n_filters * 4, n_filters * 2, kernel_size=3),
+            Upsample(n_filters * 2, n_filters, kernel_size=3),
+            Downsample(n_filters, 3, kernel_size=7, stride=1),
+        )
 
     def forward(self, x):
-        pass
+        return self.model(x)
 
 
 class CycleGANResNet(CycleGAN):
@@ -46,3 +60,11 @@ class CycleGANResNet(CycleGAN):
 
             self.criterion_mse = nn.MSELoss()
             self.criterion_l1 = nn.L1Loss()
+
+
+if __name__ == '__main__':
+    gen = Generator(32)
+
+    x = torch.rand(1, 3, 256, 256)
+    o = gen(x)
+    print(o.shape)

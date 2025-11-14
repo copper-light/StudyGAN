@@ -24,6 +24,7 @@ from models.wgan import WGAN
 from models.wgan_gp import WGAN_GP
 from models.wgan_gp_c import WGAN_GP_C
 from models.cycle_gan_unet import CycleGAN
+from models.cycle_gan_resnet import CycleGANResNet
 
 TIME_FORMAT = ('%Y%m%d_%H%M%S')
 
@@ -141,7 +142,7 @@ class Trainer:
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="GAN model trainer.")
-    parser.add_argument('--models', type=str, default='DCGAN', choices=['GAN', 'GAN-C', 'DCGAN', 'DCGAN-C', 'WGAN', 'WGAN-GP','WGAN-GP-C', 'CYCLE-GAN'])
+    parser.add_argument('--models', type=str, default='DCGAN', choices=['GAN', 'GAN-C', 'DCGAN', 'DCGAN-C', 'WGAN', 'WGAN-GP','WGAN-GP-C', 'CYCLE-GAN', 'CYCLE-GAN-RESNET'])
     parser.add_argument('--lr', type=float, default=1e-4)
     parser.add_argument('--batch-size', type=int, default=32)
     parser.add_argument('--epochs', type=int, default=1)
@@ -218,7 +219,7 @@ if __name__ == "__main__":
             transforms.Resize((256, 256)),
             transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
         ])
-        train_dataset = StyleTransferDataset(root="data/monet2photo/", train=True, transform=transforms)
+        train_dataset = StyleTransferDataset(root="data/monet2photo/", limit=100, train=True, transform=transforms)
         train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True)
         valid_dataset = StyleTransferDataset(root="data/monet2photo/", limit=10, train=False, transform=transforms)
         valid_loader = DataLoader(valid_dataset, batch_size=1, shuffle=True)
@@ -286,7 +287,17 @@ if __name__ == "__main__":
         model = CycleGAN(input_dim=data_shape, output_dim=data_shape,
                          name="CYCLE-GAN", device=device, is_train=True,
                          lr=args.lr,
-                         gen_n_filters=64, disc_n_filters=64,
+                         gen_n_filters=32, disc_n_filters=32,
                          lambda_validation = 1, lambda_reconstruction = 10, lambda_identity = 2)
+        trainer = Trainer(model, train_gen_per_iter=train_gen_per_iter, log_path=args.log_path)
+        trainer.train(train_loader, valid_loader, args.epochs)
+
+    elif args.models == 'CYCLE-GAN-RESNET':
+        train_gen_per_iter = 1
+        model = CycleGANResNet(input_dim=data_shape, output_dim=data_shape,
+                         name="CYCLE-GAN-RESNET", device=device, is_train=True,
+                         lr=args.lr,
+                         gen_n_filters=32, disc_n_filters=64,
+                         lambda_validation=1, lambda_reconstruction=10, lambda_identity=5)
         trainer = Trainer(model, train_gen_per_iter=train_gen_per_iter, log_path=args.log_path)
         trainer.train(train_loader, valid_loader, args.epochs)
