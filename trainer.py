@@ -218,7 +218,7 @@ if __name__ == "__main__":
             transforms.Resize((256, 256)),
             transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
         ])
-        train_dataset = StyleTransferDataset(root="data/monet2photo/", limit=100, train=True, transform=transforms)
+        train_dataset = StyleTransferDataset(root="data/monet2photo/", train=True, transform=transforms)
         train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True)
         valid_dataset = StyleTransferDataset(root="data/monet2photo/", limit=10, train=False, transform=transforms)
         valid_loader = DataLoader(valid_dataset, batch_size=1, shuffle=True)
@@ -286,6 +286,7 @@ if __name__ == "__main__":
         model = CycleGAN(input_dim=data_shape, output_dim=data_shape,
                          name="CYCLE-GAN", device=device, is_train=True,
                          lr=args.lr,
+                         gen_n_filters=64, disc_n_filters=64,
                          lambda_validation = 1, lambda_reconstruction = 10, lambda_identity = 2)
         trainer = Trainer(model, train_gen_per_iter=train_gen_per_iter, log_path=args.log_path)
         trainer.train(train_loader, valid_loader, args.epochs)
