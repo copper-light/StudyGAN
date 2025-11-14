@@ -11,7 +11,7 @@ class Downsample(nn.Module):
     def __init__(self, input_channel, output_channel, kernel_size=5, stride=2, norm = True, activation='relu'):
         super().__init__()
         self.module = nn.Sequential(
-            nn.Conv2d(input_channel, output_channel, kernel_size, stride=stride, padding=2),
+            nn.Conv2d(input_channel, output_channel, kernel_size, stride=stride, padding=kernel_size//2),
         )
 
         if norm:
