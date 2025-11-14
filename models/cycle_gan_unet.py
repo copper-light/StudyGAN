@@ -21,6 +21,8 @@ class Downsample(nn.Module):
             self.module.append(nn.ReLU(inplace=True))
         elif activation == 'lrelu':
             self.module.append(nn.LeakyReLU(0.2, inplace=True))
+        elif activation == 'tanh':
+            self.module.append(nn.Tanh())
 
     def forward(self, x):
         return self.module(x)

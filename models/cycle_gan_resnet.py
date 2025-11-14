@@ -35,7 +35,7 @@ class Generator(nn.Module):
             ResidualBlock(n_filters * 4, n_filters * 4, kernel_size=3, stride=1),
             Upsample(n_filters * 4, n_filters * 2, kernel_size=3),
             Upsample(n_filters * 2, n_filters, kernel_size=3),
-            Downsample(n_filters, 3, kernel_size=7, stride=1),
+            Downsample(n_filters, 3, kernel_size=7, stride=1, activation='tanh'),
         )
 
     def forward(self, x):
