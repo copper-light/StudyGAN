@@ -219,7 +219,7 @@ if __name__ == "__main__":
             transforms.Resize((256, 256)),
             transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
         ])
-        train_dataset = StyleTransferDataset(root="data/monet2photo/", limit=100, train=True, transform=transforms)
+        train_dataset = StyleTransferDataset(root="data/monet2photo/", train=True, transform=transforms)
         train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True)
         valid_dataset = StyleTransferDataset(root="data/monet2photo/", limit=10, train=False, transform=transforms)
         valid_loader = DataLoader(valid_dataset, batch_size=1, shuffle=True)
