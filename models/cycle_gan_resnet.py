@@ -13,6 +13,8 @@ class ResidualBlock(nn.Module):
         block.append(nn.Conv2d(input_channels, output_channels, kernel_size=kernel_size, stride=stride, padding=padding))
         block.append(nn.InstanceNorm2d(output_channels))
         block.append(nn.ReLU())
+        block.append(nn.Conv2d(output_channels, output_channels, kernel_size=3, stride=1, padding='same'))
+        block.append(nn.InstanceNorm2d(output_channels))
         self.block = block
 
     def forward(self, x):
