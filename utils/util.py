@@ -9,7 +9,7 @@ import io
 from PIL import Image
 
 def show_plt(images, n_rows=10, n_cols=10, show = False, save_path = None):
-    fig, axes = plt.subplots(n_rows, n_cols, figsize=(15, 15))
+    fig, axes = plt.subplots(n_rows, n_cols, figsize=(20, 20))
 
     image_index = 0
     if n_rows == 1:

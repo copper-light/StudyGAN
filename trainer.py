@@ -45,7 +45,7 @@ logger.addHandler(out)
 logger.addHandler(err)
 
 class Trainer:
-    def __init__(self, model, iter_per_print = 100, train_gen_per_iter = 5, gp_weight = 10, log_path="log"):
+    def __init__(self, model, iter_per_print = 100, train_gen_per_iter = 5, gp_weight = 10, log_path="log", checkpoint=None):
         self.model = model
         self.gp_weight = gp_weight
         self.train_gen_per_iter = train_gen_per_iter
@@ -57,6 +57,14 @@ class Trainer:
         logging.basicConfig(format='%(asctime)s - %(levelname)s - %(message)s', filename=os.path.join(self.log_path, 'train.log'), level=logging.INFO)
 
         self.writer = SummaryWriter(self.log_path)
+
+        self.checkpoint = checkpoint
+        self.start_epoch = 1
+
+        if checkpoint is not None:
+            checkpoint = torch.load(args.checkpoint, weights_only=False)
+            model.load_checkpoint(checkpoint['model'])
+            self.start_epoch = checkpoint['epoch'] + 1
 
     def _epoch(self, epoch, train_loader, valid_loader):
         g_losses = []
@@ -129,14 +137,14 @@ class Trainer:
 
         best_loss = float('inf')
 
-        for epoch in range(1, num_epochs+1):
+        for epoch in range(self.start_epoch, num_epochs+1):
             self._epoch(epoch, train_loader, valid_loader)
 
             if best_loss > self.losses['G'][-1]:
                 best_loss = self.losses['G'][-1]
                 model_chk = self.model.get_checkpoint()
-                checkpoint = {'epoch': epoch + 1, 'step': self.step, 'loss': self.losses, 'model': model_chk}
-                torch.save(checkpoint, os.path.join(self.log_path, f'{self.model.name}_checkpoint_epoch_{epoch+1}.pth'))
+                checkpoint = {'epoch': epoch, 'step': self.step, 'loss': self.losses, 'model': model_chk}
+                torch.save(checkpoint, os.path.join(self.log_path, f'{self.model.name}_checkpoint_epoch_{epoch}.pth'))
                 logging.info(f"saved model - epoch:{epoch}, best_loss:{best_loss}")
 
         model_chk = self.model.get_checkpoint()
@@ -147,12 +155,13 @@ class Trainer:
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="GAN model trainer.")
     parser.add_argument('--models', type=str, default='DCGAN', choices=['GAN', 'GAN-C', 'DCGAN', 'DCGAN-C', 'WGAN', 'WGAN-GP','WGAN-GP-C', 'CYCLE-GAN', 'CYCLE-GAN-RESNET'])
-    parser.add_argument('--lr', type=float, default=1e-4)
+    parser.add_argument('--lr', type=float, default=2e-4)
     parser.add_argument('--batch-size', type=int, default=32)
     parser.add_argument('--epochs', type=int, default=1)
     parser.add_argument('--use-gpu', type=str2bool, default=True, choices=['True', 'False', 'true', 'false'])
     parser.add_argument('--log-path', type=str, default='logs/')
     parser.add_argument('--dataset', type=str, default='mnist', choices=['mnist', 'cifar10', 'apple2orange', 'monet2photo'])
+    parser.add_argument('--checkpoint', type=str)
     args = parser.parse_args()
 
     import torchvision.transforms as transforms
@@ -167,6 +176,11 @@ if __name__ == "__main__":
 
     dataloader = None
     data_shape = None
+
+    model = None
+
+    start_epoch = 1
+    train_gen_per_iter = 1
 
     if args.dataset == 'mnist':
         transforms = transforms.Compose([
@@ -240,41 +254,25 @@ if __name__ == "__main__":
 
     if args.models == 'GAN':
         model = GAN(input_dim=data_shape, output_dim=data_shape, name="GAN", device=device, is_train=True, lr=args.lr)
-        train_gen_per_iter = 1
-        trainer = Trainer(model, train_gen_per_iter = train_gen_per_iter, log_path = args.log_path)
-        trainer.train(train_loader, valid_loader, args.epochs)
 
     elif args.models == 'GAN-C':
         model = GAN(input_dim=data_shape, output_dim=data_shape, name="GAN-Conditional", device=device, is_train=True, lr=args.lr, num_classes=len(train_dataset.classes))
-        train_gen_per_iter = 1
-        trainer = Trainer(model, train_gen_per_iter=train_gen_per_iter, log_path = args.log_path)
-        trainer.train(train_loader, valid_loader, args.epochs)
 
     elif args.models == 'DCGAN':
         model = DCGAN(input_dim=data_shape, output_dim=data_shape, name="DCGAN", device=device, is_train=True, lr=args.lr)
-        train_gen_per_iter = 1
-        trainer = Trainer(model, train_gen_per_iter=train_gen_per_iter, log_path=args.log_path)
-        trainer.train(train_loader, valid_loader, args.epochs)
 
     elif args.models == 'DCGAN-C':
         model = DCGAN(input_dim=data_shape, output_dim=data_shape, name="DCGAN-Conditional", device=device, is_train=True, lr=args.lr, num_classes=len(train_dataset.classes))
-        train_gen_per_iter = 1
-        trainer = Trainer(model, train_gen_per_iter=train_gen_per_iter, log_path=args.log_path)
-        trainer.train(train_loader, valid_loader, args.epochs)
 
     elif args.models == 'WGAN':
         clip_threshold = 0.1
         train_gen_per_iter = 5
         model = WGAN(input_dim=data_shape, output_dim=data_shape, name="WGAN", device=device, is_train=True, lr=args.lr, clip_threshold = clip_threshold)
-        trainer = Trainer(model, train_gen_per_iter=train_gen_per_iter, log_path=args.log_path)
-        trainer.train(train_loader, valid_loader, args.epochs)
 
     elif args.models == 'WGAN-GP':
         train_gen_per_iter = 5
         gp_weight = 10
         model = WGAN_GP(input_dim=data_shape, output_dim=data_shape, name="WGAN-GP", device=device, is_train=True, lr=args.lr, gp_weight=gp_weight)
-        trainer = Trainer(model, train_gen_per_iter=train_gen_per_iter, log_path=args.log_path)
-        trainer.train(train_loader, valid_loader, args.epochs)
 
     elif args.models == 'WGAN-GP-C':
         train_gen_per_iter = 5
@@ -283,25 +281,19 @@ if __name__ == "__main__":
                           name="WGAN-GP", device=device, is_train=True, 
                           lr=args.lr, gp_weight=gp_weight, 
                           num_classes=len(train_dataset.classes))
-        trainer = Trainer(model, train_gen_per_iter=train_gen_per_iter, log_path=args.log_path)
-        trainer.train(train_loader, valid_loader, args.epochs)
 
     elif args.models == 'CYCLE-GAN':
-        train_gen_per_iter = 1
         model = CycleGAN(input_dim=data_shape, output_dim=data_shape,
                          name="CYCLE-GAN", device=device, is_train=True,
                          lr=args.lr,
                          gen_n_filters=32, disc_n_filters=32,
                          lambda_validation = 1, lambda_reconstruction = 10, lambda_identity = 2)
-        trainer = Trainer(model, train_gen_per_iter=train_gen_per_iter, log_path=args.log_path)
-        trainer.train(train_loader, valid_loader, args.epochs)
-
     elif args.models == 'CYCLE-GAN-RESNET':
-        train_gen_per_iter = 1
         model = CycleGANResNet(input_dim=data_shape, output_dim=data_shape,
                          name="CYCLE-GAN-RESNET", device=device, is_train=True,
                          lr=args.lr,
                          gen_n_filters=32, disc_n_filters=64,
                          lambda_validation=1, lambda_reconstruction=10, lambda_identity=5)
-        trainer = Trainer(model, train_gen_per_iter=train_gen_per_iter, log_path=args.log_path)
-        trainer.train(train_loader, valid_loader, args.epochs)
+
+    trainer = Trainer(model, train_gen_per_iter=train_gen_per_iter, log_path=args.log_path, checkpoint=args.checkpoint)
+    trainer.train(train_loader, valid_loader, args.epochs)
