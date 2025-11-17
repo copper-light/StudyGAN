@@ -1,4 +1,3 @@
-import random
 import os
 import numpy as np
 import h5py
@@ -16,6 +15,8 @@ class StyleTransferDataset(Dataset):
         self.cache = cache
         self.limit = limit
         self.cachefile = None
+
+        np.random.seed(42)
         
         middle_path = 'train'
         if not train:
@@ -43,8 +44,8 @@ class StyleTransferDataset(Dataset):
             self.a = self.a[:self.limit]
             self.b = self.b[:self.limit]
 
-        random.shuffle(self.a)
-        random.shuffle(self.b)
+        np.random.shuffle(self.a)
+        np.random.shuffle(self.b)
 
         self.len = min(len(self.a), len(self.b))
 
@@ -62,9 +63,8 @@ class StyleTransferDataset(Dataset):
             b = np.array(Image.open(self.b[index])).astype(np.float32) / 255.
 
         if index == self.len - 1:
-            print("shuflling")
-            random.shuffle(self.a)
-            random.shuffle(self.b)
+            np.random.shuffle(self.a)
+            np.random.shuffle(self.b)
 
         if self.transform:
             return self.transform(a).float(), self.transform(b).float()
