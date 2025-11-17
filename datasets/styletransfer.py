@@ -61,7 +61,8 @@ class StyleTransferDataset(Dataset):
             a = np.array(Image.open(self.a[index])).astype(np.float32) / 255.
             b = np.array(Image.open(self.b[index])).astype(np.float32) / 255.
 
-        if self.len == index - 1:
+        if index == self.len - 1:
+            print("shuflling")
             random.shuffle(self.a)
             random.shuffle(self.b)
 
