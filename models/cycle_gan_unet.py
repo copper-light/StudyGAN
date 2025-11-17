@@ -134,7 +134,7 @@ class CycleGAN(GAN):
         one = torch.ones(x.size(0), 1, self.patch_size, self.patch_size).to(self.device)
 
         g.train()
-        fake_y = g(x).detach()
+        fake_y = g(x)
         pred = d(fake_y)
         loss_validation = self.criterion_mse(pred, one)
 
@@ -161,12 +161,12 @@ class CycleGAN(GAN):
         pred_fake = d(fake_x)
         loss_fake = self.criterion_mse(pred_fake, zero)
 
-        return loss_real + loss_fake
+        return (loss_real + loss_fake) * 0.5
 
     def train_generator(self, img_a, img_b):
         loss_ab = self._train_gen(self.G_ab, self.G_ba, self.D_ab, img_a, img_b)
         loss_ba = self._train_gen(self.G_ba, self.G_ab, self.D_ba, img_b, img_a)
-        loss = (loss_ab + loss_ba)
+        loss = (loss_ab + loss_ba) * 0.5
 
         self.G_optimizer.zero_grad()
         loss.backward()

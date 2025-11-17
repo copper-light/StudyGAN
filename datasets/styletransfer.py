@@ -8,13 +8,14 @@ from torch.utils.data import Dataset
 
 class StyleTransferDataset(Dataset):
 
-    def __init__(self, root, limit = None, cache = True, train = True, transform=None):
+    def __init__(self, root, limit = None, cache = True, train = True, transform=None, shuffle=True):
         super(StyleTransferDataset, self).__init__()
         self.root = root
         self.transform = transform
         self.cache = cache
         self.limit = limit
         self.cachefile = None
+        self.shuffle = shuffle
 
         np.random.seed(42)
         
@@ -44,9 +45,6 @@ class StyleTransferDataset(Dataset):
             self.a = self.a[:self.limit]
             self.b = self.b[:self.limit]
 
-        np.random.shuffle(self.a)
-        np.random.shuffle(self.b)
-
         self.len = min(len(self.a), len(self.b))
 
     def __len__(self):
@@ -62,14 +60,15 @@ class StyleTransferDataset(Dataset):
             a = np.array(Image.open(self.a[index])).astype(np.float32) / 255.
             b = np.array(Image.open(self.b[index])).astype(np.float32) / 255.
 
-        if index == self.len - 1:
-            np.random.shuffle(self.a)
-            np.random.shuffle(self.b)
-
         if self.transform:
             return self.transform(a).float(), self.transform(b).float()
         else:
             return a, b
+
+    def on_epoch_start(self):
+        if self.shuffle:
+            np.random.shuffle(self.a)
+            np.random.shuffle(self.b)
 
 if __name__ == '__main__':
     from torchvision import transforms

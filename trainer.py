@@ -64,6 +64,10 @@ class Trainer:
         monitor_values = {}
         start_time = time.time()
         progress = tqdm(enumerate(train_loader))
+
+        if hasattr(train_loader.dataset, "on_epoch_start"):
+            train_loader.dataset.on_epoch_start()
+        
         for step, (x, y) in progress:
             self.step += 1
             d_loss, d_values = self.model.train_discriminator(x, y)
