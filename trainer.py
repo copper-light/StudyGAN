@@ -125,7 +125,7 @@ class Trainer:
         save_image = torch.tensor(save_image).permute(2,0,1).unsqueeze(dim=0)
         self.writer.add_images('image', save_image, epoch)
 
-    def train(self, train_loader, valid_loader, num_epochs):
+    def train(self, train_loader, valid_loader, num_epochs, save_freg ='g_loss'):
         logging.info("params: ")
         for name, value in self.model.__dict__.items():
             logging.info(f"{name}: {value}")
@@ -140,12 +140,19 @@ class Trainer:
         for epoch in range(self.start_epoch, num_epochs+1):
             self._epoch(epoch, train_loader, valid_loader)
 
-            if best_loss > self.losses['G'][-1]:
-                best_loss = self.losses['G'][-1]
+            if save_freg == 'g_loss':
+                if best_loss > self.losses['G'][-1]:
+                    best_loss = self.losses['G'][-1]
+                    model_chk = self.model.get_checkpoint()
+                    checkpoint = {'epoch': epoch, 'step': self.step, 'loss': self.losses, 'model': model_chk}
+                    torch.save(checkpoint, os.path.join(self.log_path, f'{self.model.name}_checkpoint_epoch_{epoch}.pth'))
+                    logging.info(f"saved model - epoch:{epoch}, best_loss:{best_loss}")
+
+            elif save_freg == 'epoch':
                 model_chk = self.model.get_checkpoint()
                 checkpoint = {'epoch': epoch, 'step': self.step, 'loss': self.losses, 'model': model_chk}
                 torch.save(checkpoint, os.path.join(self.log_path, f'{self.model.name}_checkpoint_epoch_{epoch}.pth'))
-                logging.info(f"saved model - epoch:{epoch}, best_loss:{best_loss}")
+                logging.info(f"saved model - epoch:{epoch}")
 
         model_chk = self.model.get_checkpoint()
         checkpoint = {'epoch': num_epochs, 'step': self.step, 'loss': self.losses, 'model': model_chk}
@@ -155,7 +162,7 @@ class Trainer:
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="GAN model trainer.")
     parser.add_argument('--models', type=str, default='DCGAN', choices=['GAN', 'GAN-C', 'DCGAN', 'DCGAN-C', 'WGAN', 'WGAN-GP','WGAN-GP-C', 'CYCLE-GAN', 'CYCLE-GAN-RESNET'])
-    parser.add_argument('--lr', type=float, default=2e-4)
+    parser.add_argument('--lr', type=float, default=1e-4)
     parser.add_argument('--batch-size', type=int, default=32)
     parser.add_argument('--epochs', type=int, default=1)
     parser.add_argument('--use-gpu', type=str2bool, default=True, choices=['True', 'False', 'true', 'false'])
@@ -296,4 +303,4 @@ if __name__ == "__main__":
                          lambda_validation=1, lambda_reconstruction=10, lambda_identity=5)
 
     trainer = Trainer(model, train_gen_per_iter=train_gen_per_iter, log_path=args.log_path, checkpoint=args.checkpoint)
-    trainer.train(train_loader, valid_loader, args.epochs)
+    trainer.train(train_loader, valid_loader, args.epochs, save_freg='epoch')
