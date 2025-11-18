@@ -17,6 +17,7 @@ from tqdm import tqdm
 from torch.utils.tensorboard import SummaryWriter
 
 from utils.util import show_plt, str2bool
+from utils.lr_scheduler import LRScheduler
 from models.valina_gan import GAN
 from models.dcgan import DCGAN
 from models.dcgan_b import DCGAN_B
@@ -125,7 +126,7 @@ class Trainer:
         save_image = torch.tensor(save_image).permute(2,0,1).unsqueeze(dim=0)
         self.writer.add_images('image', save_image, epoch)
 
-    def train(self, train_loader, valid_loader, num_epochs, save_freg ='g_loss'):
+    def train(self, train_loader, valid_loader, lr_scheduler, num_epochs, save_freg ='g_loss'):
         logging.info("params: ")
         for name, value in self.model.__dict__.items():
             logging.info(f"{name}: {value}")
@@ -136,6 +137,9 @@ class Trainer:
         logging.info("training.. ")
 
         best_loss = float('inf')
+
+        lr_scheduler.reg_optimizer(self.model.G_optimizer)
+        lr_scheduler.reg_optimizer(self.model.D_optimizer)
 
         for epoch in range(self.start_epoch, num_epochs+1):
             self._epoch(epoch, train_loader, valid_loader)
@@ -165,6 +169,8 @@ if __name__ == "__main__":
     parser.add_argument('--lr', type=float, default=1e-4)
     parser.add_argument('--batch-size', type=int, default=32)
     parser.add_argument('--epochs', type=int, default=1)
+    parser.add_argument('--lr_scheduler', type=str, default='linear')
+    parser.add_argument('--start_schedule_epoch', type=int, default=0)
     parser.add_argument('--use-gpu', type=str2bool, default=True, choices=['True', 'False', 'true', 'false'])
     parser.add_argument('--log-path', type=str, default='logs/')
     parser.add_argument('--dataset', type=str, default='mnist', choices=['mnist', 'cifar10', 'apple2orange', 'monet2photo', 'horse2zebra'])
@@ -317,5 +323,6 @@ if __name__ == "__main__":
                          gen_n_filters=32, disc_n_filters=64,
                          lambda_validation=1, lambda_reconstruction=10, lambda_identity=5)
 
+    lr_scheduler = LRScheduler(args.epochs, scheduler_type=args.lr_scheduler, start_schedule_epoch=args.start_schedule_epoch)
     trainer = Trainer(model, train_gen_per_iter=train_gen_per_iter, log_path=args.log_path, checkpoint=args.checkpoint)
-    trainer.train(train_loader, valid_loader, args.epochs, save_freg='epoch')
+    trainer.train(train_loader, valid_loader, lr_scheduler, args.epochs, save_freg='epoch')
