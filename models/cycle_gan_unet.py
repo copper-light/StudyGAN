@@ -166,13 +166,13 @@ class CycleGAN(GAN):
     def train_generator(self, img_a, img_b):
         loss_ab = self._train_gen(self.G_ab, self.G_ba, self.D_ab, img_a, img_b)
         loss_ba = self._train_gen(self.G_ba, self.G_ab, self.D_ba, img_b, img_a)
-        loss = (loss_ab + loss_ba) * 0.5
+        loss = (loss_ab + loss_ba)
 
         self.G_optimizer.zero_grad()
         loss.backward()
         self.G_optimizer.step()
 
-        return loss.item(), None
+        return loss.item() * 0.5, None
 
     def train_discriminator(self, img_a, img_b):
         loss_a = self._train_disc(self.G_ab, self.D_ab, img_a)

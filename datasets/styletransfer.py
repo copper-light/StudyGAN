@@ -28,8 +28,8 @@ class StyleTransferDataset(Dataset):
             if not os.path.exists(cache_file_path):
                 a_path = glob(os.path.join(self.root, f'{middle_path}A/*.jpg'))
                 b_path = glob(os.path.join(self.root, f'{middle_path}B/*.jpg'))
-                self.a = np.array([Image.open(p) for p in a_path]).astype(np.float32) / 255.
-                self.b = np.array([Image.open(p) for p in b_path]).astype(np.float32) / 255.
+                self.a = np.array([self._open_image(p) for p in a_path]).astype(np.float32) / 255.
+                self.b = np.array([self._open_image(p) for p in b_path]).astype(np.float32) / 255.
                 with h5py.File(cache_file_path, 'w') as f:
                     f.create_dataset('trainA', data=self.a)
                     f.create_dataset('trainB', data=self.b)
@@ -57,13 +57,19 @@ class StyleTransferDataset(Dataset):
             a = self.a[index]
             b = self.b[index]
         else:
-            a = np.array(Image.open(self.a[index])).astype(np.float32) / 255.
-            b = np.array(Image.open(self.b[index])).astype(np.float32) / 255.
+            a = np.array(self._open_image(self.a[index])).astype(np.float32) / 255.
+            b = np.array(self._open_image(self.b[index])).astype(np.float32) / 255.
 
         if self.transform:
             return self.transform(a).float(), self.transform(b).float()
         else:
             return a, b
+
+    def _open_image(self, path):
+        img = Image.open(path)
+        if img.mode != 'RGB':
+            img = img.convert('RGB')
+        return img
 
     def on_epoch_start(self):
         if self.shuffle:
@@ -74,7 +80,7 @@ if __name__ == '__main__':
     from torchvision import transforms
     from torch.utils.data import DataLoader
 
-    dataset = StyleTransferDataset("../data/apple2orange", train=True, cache=False, transform=transforms.Compose([
+    dataset = StyleTransferDataset("../data/horse2zebra", train=True, cache=False, transform=transforms.Compose([
         transforms.ToTensor()
     ]))
 

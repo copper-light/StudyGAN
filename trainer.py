@@ -167,7 +167,7 @@ if __name__ == "__main__":
     parser.add_argument('--epochs', type=int, default=1)
     parser.add_argument('--use-gpu', type=str2bool, default=True, choices=['True', 'False', 'true', 'false'])
     parser.add_argument('--log-path', type=str, default='logs/')
-    parser.add_argument('--dataset', type=str, default='mnist', choices=['mnist', 'cifar10', 'apple2orange', 'monet2photo'])
+    parser.add_argument('--dataset', type=str, default='mnist', choices=['mnist', 'cifar10', 'apple2orange', 'monet2photo', 'horse2zebra'])
     parser.add_argument('--checkpoint', type=str)
     args = parser.parse_args()
 
@@ -236,7 +236,7 @@ if __name__ == "__main__":
 
         data_shape = (3, 128, 128)
 
-    elif args.dataset == 'monet2photo': # apple2orange
+    elif args.dataset == 'monet2photo':
         from datasets.styletransfer import StyleTransferDataset
 
         transforms = transforms.Compose([
@@ -247,6 +247,21 @@ if __name__ == "__main__":
         train_dataset = StyleTransferDataset(root="data/monet2photo/", train=True, transform=transforms)
         train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True)
         valid_dataset = StyleTransferDataset(root="data/monet2photo/", limit=10, train=False, transform=transforms)
+        valid_loader = DataLoader(valid_dataset, batch_size=1, shuffle=True)
+
+        data_shape = (3, 256, 256)
+
+    elif args.dataset == 'horse2zebra':
+        from datasets.styletransfer import StyleTransferDataset
+
+        transforms = transforms.Compose([
+            transforms.ToTensor(),
+            transforms.Resize((256, 256)),
+            transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+        ])
+        train_dataset = StyleTransferDataset(root="data/horse2zebra/", train=True, transform=transforms)
+        train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True)
+        valid_dataset = StyleTransferDataset(root="data/horse2zebra/", limit=10, train=False, transform=transforms)
         valid_loader = DataLoader(valid_dataset, batch_size=1, shuffle=True)
 
         data_shape = (3, 256, 256)
