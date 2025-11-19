@@ -14,6 +14,13 @@ class ConvBlock(nn.Module):
         super().__init__()
         layer = []
 
+        if stride % 2 == 0 and padding == 'same':
+            padding = stride // 4
+            if padding_mode == 'zeros':
+                layer += [nn.ZeroPad2d((1,0,1,0))]
+            elif padding_mode == 'reflect':
+                layer += [nn.ReflectionPad2d((1,0,1,0))]
+
         use_bias = norm != 'batch'
         layer += [nn.Conv2d(input_channel, output_channel, kernel_size, stride=stride, padding=padding, padding_mode=padding_mode, bias=use_bias)]
 
