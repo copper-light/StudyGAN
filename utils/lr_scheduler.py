@@ -8,7 +8,7 @@ class LRScheduler(object):
         self.start_schedule_epoch = start_schedule_epoch
         self.num_epochs = num_epochs
 
-    def reg_optimizer(self, optimizer, args):
+    def reg_optimizer(self, optimizer):
         if self.scheduler_type  == 'linear':
             def lambda_rule(epoch):
                 start_schedule_epoch = self.start_schedule_epoch - 1

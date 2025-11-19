@@ -7,13 +7,13 @@ from functools import partial
 from models.cycle_gan_unet import CycleGAN, Discriminator, Downsample, Upsample
 
 class ResidualBlock(nn.Module):
-    def __init__(self, input_channels, output_channels, kernel_size, stride, padding='same'):
+    def __init__(self, input_channels, output_channels, kernel_size, stride, padding='same', padding_mode='zeros'):
         super(ResidualBlock, self).__init__()
         block = nn.Sequential()
-        block.append(nn.Conv2d(input_channels, output_channels, kernel_size=kernel_size, stride=stride, padding=padding))
+        block.append(nn.Conv2d(input_channels, output_channels, kernel_size=kernel_size, stride=stride, padding=padding, padding_mode=padding_mode))
         block.append(nn.InstanceNorm2d(output_channels))
         block.append(nn.ReLU())
-        block.append(nn.Conv2d(output_channels, output_channels, kernel_size=3, stride=1, padding='same'))
+        block.append(nn.Conv2d(output_channels, output_channels, kernel_size=3, stride=1, padding='same', padding_mode=padding_mode))
         block.append(nn.InstanceNorm2d(output_channels))
         self.block = block
 
@@ -25,19 +25,19 @@ class Generator(nn.Module):
     def __init__(self, n_filters):
         super(Generator, self).__init__()
         self.model = nn.Sequential(
-            Downsample(3, n_filters, kernel_size=7, stride=1),
+            Downsample(3, n_filters, kernel_size=7, stride=1, padding_mode='reflect'),
             Downsample(n_filters, n_filters * 2, kernel_size=3, stride=2),
             Downsample(n_filters * 2, n_filters * 4, kernel_size=3, stride=2),
-            ResidualBlock(n_filters * 4, n_filters * 4, kernel_size=3, stride=1),
-            ResidualBlock(n_filters * 4, n_filters * 4, kernel_size=3, stride=1),
-            ResidualBlock(n_filters * 4, n_filters * 4, kernel_size=3, stride=1),
-            ResidualBlock(n_filters * 4, n_filters * 4, kernel_size=3, stride=1),
-            ResidualBlock(n_filters * 4, n_filters * 4, kernel_size=3, stride=1),
-            ResidualBlock(n_filters * 4, n_filters * 4, kernel_size=3, stride=1),
-            ResidualBlock(n_filters * 4, n_filters * 4, kernel_size=3, stride=1),
+            ResidualBlock(n_filters * 4, n_filters * 4, kernel_size=3, stride=1, padding_mode='reflect'),
+            ResidualBlock(n_filters * 4, n_filters * 4, kernel_size=3, stride=1, padding_mode='reflect'),
+            ResidualBlock(n_filters * 4, n_filters * 4, kernel_size=3, stride=1, padding_mode='reflect'),
+            ResidualBlock(n_filters * 4, n_filters * 4, kernel_size=3, stride=1, padding_mode='reflect'),
+            ResidualBlock(n_filters * 4, n_filters * 4, kernel_size=3, stride=1, padding_mode='reflect'),
+            ResidualBlock(n_filters * 4, n_filters * 4, kernel_size=3, stride=1, padding_mode='reflect'),
+            ResidualBlock(n_filters * 4, n_filters * 4, kernel_size=3, stride=1, padding_mode='reflect'),
             Upsample(n_filters * 4, n_filters * 2, kernel_size=3),
             Upsample(n_filters * 2, n_filters, kernel_size=3),
-            Downsample(n_filters, 3, kernel_size=7, stride=1, activation='tanh'),
+            Downsample(n_filters, 3, kernel_size=7, stride=1, activation='tanh', padding_mode='reflect'),
         )
 
     def forward(self, x):

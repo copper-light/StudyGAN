@@ -8,10 +8,10 @@ from functools import partial
 from models.valina_gan import GAN
 
 class Downsample(nn.Module):
-    def __init__(self, input_channel, output_channel, kernel_size=5, stride=2, norm = True, activation='relu'):
+    def __init__(self, input_channel, output_channel, kernel_size=5, stride=2, norm = True, activation='relu', padding_mode='zeros'):
         super().__init__()
         self.module = nn.Sequential(
-            nn.Conv2d(input_channel, output_channel, kernel_size, stride=stride, padding=kernel_size//2),
+            nn.Conv2d(input_channel, output_channel, kernel_size, stride=stride, padding=kernel_size//2, padding_mode=padding_mode),
         )
 
         if norm:
@@ -28,12 +28,12 @@ class Downsample(nn.Module):
         return self.module(x)
 
 class Upsample(nn.Module):
-    def __init__(self, input_channel, output_channel, kernel_size=5, dropout_rate = 0, norm=True, activation='relu', use_skip_connection=True):
+    def __init__(self, input_channel, output_channel, kernel_size=5, dropout_rate = 0, norm=True, activation='relu', use_skip_connection=True, padding_mode='zeros'):
         super().__init__()
         self.use_skip_connection = use_skip_connection
         self.module = nn.Sequential(
             nn.Upsample(scale_factor=2, mode='nearest'),
-            nn.Conv2d(input_channel, output_channel, kernel_size, stride=1, padding='same'),
+            nn.Conv2d(input_channel, output_channel, kernel_size, stride=1, padding='same', padding_mode=padding_mode),
         )
 
         if norm:
