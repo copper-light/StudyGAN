@@ -1,3 +1,5 @@
+import math
+
 import torch
 import torch.nn as nn
 import numpy as np
@@ -7,45 +9,54 @@ from functools import partial
 
 from models.valina_gan import GAN
 
-class Downsample(nn.Module):
-    def __init__(self, input_channel, output_channel, kernel_size=5, stride=2, norm = True, activation='relu', padding_mode='zeros'):
+class ConvBlock(nn.Module):
+    def __init__(self, input_channel, output_channel, kernel_size=3, stride=1, padding='same', padding_mode='zeros', norm = 'batch', activation='relu', dropout_rate = 0):
         super().__init__()
-        self.module = nn.Sequential(
-            nn.Conv2d(input_channel, output_channel, kernel_size, stride=stride, padding=kernel_size//2, padding_mode=padding_mode),
-        )
+        layer = []
 
-        if norm:
-            self.module.append(nn.InstanceNorm2d(output_channel))
+        use_bias = norm != 'batch'
+        layer += [nn.Conv2d(input_channel, output_channel, kernel_size, stride=stride, padding=padding, padding_mode=padding_mode, bias=use_bias)]
+
+        if norm == 'batch':
+            layer += [nn.BatchNorm2d(output_channel)]
+        elif norm == 'instance':
+            layer += [nn.InstanceNorm2d(output_channel)]
 
         if activation == 'relu':
-            self.module.append(nn.ReLU(inplace=True))
+            layer += [nn.ReLU(inplace=True)]
         elif activation == 'lrelu':
-            self.module.append(nn.LeakyReLU(0.2, inplace=True))
+            layer += [nn.LeakyReLU(0.2, inplace=True)]
         elif activation == 'tanh':
-            self.module.append(nn.Tanh())
+            layer += [nn.Tanh()]
+
+        if dropout_rate > 0:
+            layer += [nn.Dropout(dropout_rate)]
+
+        self.block = nn.Sequential(*layer)
+
+    def forward(self, x):
+        return self.block(x)
+
+
+class Downsample(nn.Module):
+    def __init__(self, input_channel, output_channel, kernel_size=4, stride=2, padding=1, norm = 'batch', activation='lrelu', padding_mode='zeros'):
+        super().__init__()
+        self.module = ConvBlock(input_channel, output_channel, kernel_size, stride=stride, padding=padding, norm=norm, activation=activation, padding_mode=padding_mode)
 
     def forward(self, x):
         return self.module(x)
 
+
 class Upsample(nn.Module):
-    def __init__(self, input_channel, output_channel, kernel_size=5, dropout_rate = 0, norm=True, activation='relu', use_skip_connection=True, padding_mode='zeros'):
+    def __init__(self, input_channel, output_channel, kernel_size=4, padding='same', dropout_rate = 0, norm=True, activation='relu', use_skip_connection=True, padding_mode='zeros'):
         super().__init__()
         self.use_skip_connection = use_skip_connection
-        self.module = nn.Sequential(
+        layer = [
             nn.Upsample(scale_factor=2, mode='nearest'),
-            nn.Conv2d(input_channel, output_channel, kernel_size, stride=1, padding='same', padding_mode=padding_mode),
-        )
+            ConvBlock(input_channel, output_channel, kernel_size=kernel_size, padding=padding, dropout_rate=dropout_rate, norm=norm, activation=activation, padding_mode=padding_mode),
+        ]
 
-        if norm:
-            self.module.append(nn.InstanceNorm2d(output_channel))
-
-        if activation == 'relu':
-            self.module.append(nn.ReLU(inplace=True))
-        elif activation == 'tanh':
-            self.module.append(nn.Tanh())
-
-        if dropout_rate > 0:
-            self.module.append(nn.Dropout(dropout_rate))
+        self.module = nn.Sequential(*layer)
 
 
     def forward(self, x, skip_x = None):
@@ -58,12 +69,12 @@ class Upsample(nn.Module):
 class Discriminator(nn.Module):
     def __init__(self, n_filters=32):
         super().__init__()
-        self.block1 = Downsample(3, n_filters, norm = False, activation = 'lrelu') # 64
-        self.block2 = Downsample(n_filters, n_filters * 2, activation='lrelu') # 32
-        self.block3 = Downsample(n_filters * 2, n_filters * 4, activation='lrelu') # 16
-        self.block4 = Downsample(n_filters * 4, n_filters * 8, stride=1, activation='lrelu')
-        self.block5 = Downsample(n_filters * 8, 1, norm=False, stride=1, activation=None)
 
+        self.block1 = Downsample(3, n_filters, norm = 'instance', activation = 'lrelu') # 64
+        self.block2 = Downsample(n_filters, n_filters * 2, norm = 'instance', activation = 'lrelu') # 32
+        self.block3 = Downsample(n_filters * 2, n_filters * 4, norm = 'instance', activation = 'lrelu') # 16
+        self.block4 = ConvBlock(n_filters * 4, n_filters * 8, kernel_size=4, stride=1, padding='same', norm = 'instance', activation = 'lrelu')
+        self.block5 = ConvBlock(n_filters * 8,1, kernel_size=4, stride=1, padding='same', norm=None, activation=None)
 
     def forward(self, x):
         x = self.block1(x)
@@ -85,7 +96,7 @@ class Generator(nn.Module):
         self.u1 = Upsample(n_filters * 8, n_filters * 4) # 128 + 128
         self.u2 = Upsample(n_filters * 8, n_filters * 2) # 64 + 64
         self.u3 = Upsample(n_filters * 4, n_filters) # 32 + 32
-        self.u4 = Upsample(n_filters * 2, 3, norm = False, activation='tanh', use_skip_connection=False)
+        self.u4 = Upsample(n_filters * 2, 3, norm = None, activation='tanh', use_skip_connection=False)
 
     def forward(self, x):
         dx1 = self.d1(x)
