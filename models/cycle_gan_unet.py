@@ -117,7 +117,6 @@ class CycleGAN(GAN):
         self.lambda_validation = lambda_validation
         self.lambda_reconstruction = lambda_reconstruction
         self.lambda_identity = lambda_identity
-        self.patch_size = input_dim[-1] // (2 ** 3)
         self.gen_n_filters = gen_n_filters
         self.disc_n_filters = disc_n_filters
         super().__init__(input_dim, output_dim, name, 0, device, is_train, lr)
@@ -142,11 +141,12 @@ class CycleGAN(GAN):
         x = x.to(self.device)
         y = y.to(self.device)
         fake_x = gen_x(y).detach()
-        one = torch.ones(x.size(0), 1, self.patch_size, self.patch_size).to(self.device)
+        one = torch.ones(1).to(self.device)
 
         g.train()
         fake_y = g(x)
         pred = d(fake_y)
+        one = one.expand_as(pred)
         loss_validation = self.criterion_mse(pred, one)
 
         reconstruction_y = g(fake_x)
@@ -163,13 +163,15 @@ class CycleGAN(GAN):
     def _train_disc(self, g, d, x):
         x = x.to(self.device)
         fake_x = g(x).detach()
-        one = torch.ones(x.size(0), 1, self.patch_size, self.patch_size).to(self.device)
-        zero = torch.zeros(x.size(0), 1, self.patch_size, self.patch_size).to(self.device)
+        one = torch.ones(1).to(self.device)
+        zero = torch.zeros(1).to(self.device)
 
         pred_real = d(x)
+        one = one.expand_as(pred_real)
         loss_real = self.criterion_mse(pred_real, one)
 
         pred_fake = d(fake_x)
+        zero = zero.expand_as(pred_fake)
         loss_fake = self.criterion_mse(pred_fake, zero)
 
         return (loss_real + loss_fake) * 0.5
