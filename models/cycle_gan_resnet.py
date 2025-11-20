@@ -6,6 +6,17 @@ from functools import partial
 
 from models.cycle_gan_unet import CycleGAN, Downsample, Upsample, ConvBlock
 
+def weights_init_normal(m):
+    classname = m.__class__.__name__
+    if classname.find("Conv2d") != -1:
+        torch.nn.init.normal_(m.weight.data, 0.0, 0.02)
+        if hasattr(m, "bias") and m.bias is not None:
+            torch.nn.init.constant_(m.bias.data, 0.0)
+    elif classname.find("BatchNorm2d") != -1:
+        torch.nn.init.normal_(m.weight.data, 1.0, 0.02)
+        torch.nn.init.constant_(m.bias.data, 0.0)
+        
+
 class ResidualBlock(nn.Module):
     def __init__(self, input_channels, output_channels, kernel_size, stride, padding='same', padding_mode='zeros'):
         super(ResidualBlock, self).__init__()
@@ -37,6 +48,7 @@ class Generator(nn.Module):
             Upsample(n_filters * 2, n_filters),
             ConvBlock(n_filters, 3, kernel_size=7, stride=1, activation='tanh', padding_mode='reflect'),
         )
+        self.apply(weights_init_normal)
 
     def forward(self, x):
         return self.model(x)
@@ -51,6 +63,7 @@ class Discriminator(nn.Module):
         self.block3 = Downsample(n_filters * 2, n_filters * 4, norm = 'instance', activation = 'lrelu') # 16
         self.block4 = Downsample(n_filters * 4, n_filters * 8, norm = 'instance', activation = 'lrelu')
         self.block5 = ConvBlock(n_filters * 8,1, kernel_size=4, stride=1, padding='same', norm=None, activation=None)
+        self.apply(weights_init_normal)
 
     def forward(self, x):
         x = self.block1(x)
