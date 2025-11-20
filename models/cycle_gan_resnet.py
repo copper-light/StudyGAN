@@ -58,7 +58,7 @@ class Discriminator(nn.Module):
     def __init__(self, n_filters=32):
         super().__init__()
 
-        self.block1 = Downsample(3, n_filters, norm = 'instance', activation = 'lrelu') # 64
+        self.block1 = Downsample(3, n_filters, norm = None, activation = 'lrelu') # 64
         self.block2 = Downsample(n_filters, n_filters * 2, norm = 'instance', activation = 'lrelu') # 32
         self.block3 = Downsample(n_filters * 2, n_filters * 4, norm = 'instance', activation = 'lrelu') # 16
         self.block4 = Downsample(n_filters * 4, n_filters * 8, norm = 'instance', activation = 'lrelu')
