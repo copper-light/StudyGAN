@@ -264,10 +264,10 @@ if __name__ == "__main__":
 
         transforms = transforms.Compose([
             transforms.ToTensor(),
-            transforms.Resize((256, 256)),
+            transforms.RandomHorizontalFlip(),
             transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
         ])
-        train_dataset = StyleTransferDataset(root="data/horse2zebra/", limit=64, train=True, transform=transforms)
+        train_dataset = StyleTransferDataset(root="data/horse2zebra/", train=True, transform=transforms)
         train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True)
         valid_dataset = StyleTransferDataset(root="data/horse2zebra/", train=False, transform=transforms)
         valid_loader = DataLoader(valid_dataset, batch_size=1, shuffle=True)
@@ -322,7 +322,7 @@ if __name__ == "__main__":
         model = CycleGANResNet(input_dim=data_shape, output_dim=data_shape,
                          name="CYCLE-GAN-RESNET", device=device, is_train=True,
                          lr=args.lr,
-                         gen_n_filters=32, disc_n_filters=64,
+                         gen_n_filters=64, disc_n_filters=64,
                          lambda_validation=1, lambda_reconstruction=10, lambda_identity=5)
 
     lr_scheduler = LRScheduler(args.epochs, scheduler_type=args.lr_scheduler, start_schedule_epoch=args.start_schedule_epoch)

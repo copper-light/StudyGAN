@@ -31,23 +31,26 @@ class ResidualBlock(nn.Module):
 
 
 class Generator(nn.Module):
-    def __init__(self, n_filters):
+    def __init__(self, n_filters, n_residual = 7):
         super(Generator, self).__init__()
-        self.model = nn.Sequential(
-            ConvBlock(3, n_filters, kernel_size=7, stride=1, padding_mode='reflect'),
-            Downsample(n_filters, n_filters * 2),
-            Downsample(n_filters * 2, n_filters * 4),
-            ResidualBlock(n_filters * 4, n_filters * 4, kernel_size=3, stride=1, padding_mode='reflect'),
-            ResidualBlock(n_filters * 4, n_filters * 4, kernel_size=3, stride=1, padding_mode='reflect'),
-            ResidualBlock(n_filters * 4, n_filters * 4, kernel_size=3, stride=1, padding_mode='reflect'),
-            ResidualBlock(n_filters * 4, n_filters * 4, kernel_size=3, stride=1, padding_mode='reflect'),
-            ResidualBlock(n_filters * 4, n_filters * 4, kernel_size=3, stride=1, padding_mode='reflect'),
-            ResidualBlock(n_filters * 4, n_filters * 4, kernel_size=3, stride=1, padding_mode='reflect'),
-            ResidualBlock(n_filters * 4, n_filters * 4, kernel_size=3, stride=1, padding_mode='reflect'),
-            Upsample(n_filters * 4, n_filters * 2),
-            Upsample(n_filters * 2, n_filters),
-            ConvBlock(n_filters, 3, kernel_size=7, stride=1, activation='tanh', padding_mode='reflect'),
-        )
+        layers = []
+
+        layers += [
+            ConvBlock(3, n_filters, kernel_size=7, stride=1, norm = 'instance', padding_mode='reflect'),
+            Downsample(n_filters, n_filters * 2, norm = 'instance'),
+            Downsample(n_filters * 2, n_filters * 4, norm = 'instance')
+        ]
+        
+        for _ in range(n_residual):
+            layers += [ResidualBlock(n_filters * 4, n_filters * 4, kernel_size=3, stride=1, padding_mode='reflect')]
+
+        layers += [
+            Upsample(n_filters * 4, n_filters * 2, norm = 'instance'),
+            Upsample(n_filters * 2, n_filters, norm = 'instance'),
+            ConvBlock(n_filters, 3, kernel_size=7, stride=1, activation='tanh', padding_mode='reflect', norm = None)
+        ]
+
+        self.model = nn.Sequential(*layers)
         self.apply(weights_init_normal)
 
     def forward(self, x):
@@ -57,21 +60,18 @@ class Generator(nn.Module):
 class Discriminator(nn.Module):
     def __init__(self, n_filters=32):
         super().__init__()
+        layers = []
+        layers += [Downsample(3, n_filters, norm = None, activation = 'lrelu')] # 128
+        layers += [Downsample(n_filters, n_filters * 2, norm = 'instance', activation = 'lrelu')] # 56
+        layers += [Downsample(n_filters * 2, n_filters * 4, norm = 'instance', activation = 'lrelu')] # 32
+        layers += [Downsample(n_filters * 4, n_filters * 8, norm = 'instance', activation = 'lrelu')] # 16 patch
+        layers += [ConvBlock(n_filters * 8,1, kernel_size=4, stride=1, padding='same', norm=None, activation=None)]
 
-        self.block1 = Downsample(3, n_filters, norm = None, activation = 'lrelu') # 64
-        self.block2 = Downsample(n_filters, n_filters * 2, norm = 'instance', activation = 'lrelu') # 32
-        self.block3 = Downsample(n_filters * 2, n_filters * 4, norm = 'instance', activation = 'lrelu') # 16
-        self.block4 = Downsample(n_filters * 4, n_filters * 8, norm = 'instance', activation = 'lrelu')
-        self.block5 = ConvBlock(n_filters * 8,1, kernel_size=4, stride=1, padding='same', norm=None, activation=None)
+        self.model = nn.Sequential(*layers)
         self.apply(weights_init_normal)
 
     def forward(self, x):
-        x = self.block1(x)
-        x = self.block2(x)
-        x = self.block3(x)
-        x = self.block4(x)
-        x = self.block5(x)
-        return x
+        return self.model(x)
 
 
 class CycleGANResNet(CycleGAN):
@@ -80,15 +80,15 @@ class CycleGANResNet(CycleGAN):
 
     def _setup_model(self, input_dim, output_dim, num_classes, device, is_train, lr):
         self.G_ab = Generator(self.gen_n_filters).to(device)
-        self.D_ab = Discriminator(self.disc_n_filters).to(device)
-
         self.G_ba = Generator(self.gen_n_filters).to(device)
-        self.D_ba = Discriminator(self.disc_n_filters).to(device)
+
+        self.D_a = Discriminator(self.disc_n_filters).to(device)
+        self.D_b = Discriminator(self.disc_n_filters).to(device)
 
         if is_train:
             adam = partial(torch.optim.Adam, lr=lr, betas=(0.5, 0.999))
             self.G_optimizer = adam(itertools.chain(self.G_ab.parameters(), self.G_ba.parameters()))
-            self.D_optimizer = adam(itertools.chain(self.D_ab.parameters(), self.D_ba.parameters()))
+            self.D_optimizer = adam(itertools.chain(self.D_a.parameters(), self.D_b.parameters()))
 
             self.criterion_mse = nn.MSELoss()
             self.criterion_l1 = nn.L1Loss()

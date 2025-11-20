@@ -44,10 +44,18 @@
 
 ### 5. Cycle GAN
 * 2개의 판별기와 2개의 생성 모델을 통해 A->B, B->A 로 각각 단반향으로 스타일을 변환하는 모델
-* 두개의 모델의 로스를 합쳐서 역전파를 수행함 
-* 데이터셋: Apple to Orange: https://www.kaggle.com/datasets/jinzhengyangking/appletoorange
+* 두개의 모델의 로스를 합쳐서 역전파를 수행함
+* 생성기 2개 모델은 서로의 아웃풋 데이터를 주고 받으며 성능을 보완해가며 학습함. 절대로 detach 로 끊으면 안됨
+* 판별기 모델은 각각 생성기의 결과를 평가하므로 서로 연결되는 접점은 없음. 따라서 생성기 학습 상태에 따라 별도의 하이퍼파라미터다 모델을 사용할 수 있음
+* 레이어 정규화를 위하여 instance normalization 수행하며, 이와 연관되어 batch-size 를 1로 지정함
+* 레이어의 다운스케일, 업스케일에서 kernel size를 4로 지정하고 padding mode 로 제로가 아니라 reflect(거울처럼 반사) 사용하여 경계면에 대해 자연스러움을 추구함
+* UNET에서 더 나아가 다운스케일과 업스케일 사이에 resnet 과 같은 깊은 레이어를 가진 CNN 모델을 삽입하여 더 디테일한 피처를 학습하게 할 수 있음
+* 데이터셋
+  * Apple to Orange: https://www.kaggle.com/datasets/jinzhengyangking/appletoorange
+  * Horse to Zebra: https://www.kaggle.com/datasets/balraj98/horse2zebra-dataset
 ```bash
-python .\trainer.py --model "CYCLE-GAN" --dataset "a2o" --epochs 80 --lr 0.0002
+python .\trainer.py --model "CYCLE-GAN" --dataset "apple2orange" --epochs 80 --batch-size 1 --lr 0.0002
+python .\trainer.py --model "CYCLE-GAN-RESNET" --dataset "horse2zebra" --epochs 80 --batch-size 1 --lr 0.0002
 ```
 
 
