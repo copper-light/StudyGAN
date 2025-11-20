@@ -67,7 +67,7 @@ class Trainer:
             model.load_checkpoint(checkpoint['model'])
             self.start_epoch = checkpoint['epoch'] + 1
 
-    def _epoch(self, epoch, train_loader, valid_loader):
+    def _epoch(self, epoch, train_loader, valid_loader, n_sample_image):
         g_losses = []
         d_losses = []
         monitor_values = {}
@@ -99,7 +99,7 @@ class Trainer:
 
             progress.set_postfix({'epoch':epoch, 'step': self.step, 'd_loss': np.mean(d_losses), 'g_loss': np.mean(g_losses)})
 
-        self._valid(epoch, valid_loader)
+        self._valid(epoch, valid_loader, n_sample_image)
 
         self.losses['G'].append(np.mean(g_losses))
         self.losses['D'].append(np.mean(d_losses))
@@ -116,17 +116,19 @@ class Trainer:
         self.writer.add_scalar('g_loss', np.mean(g_losses), epoch)
 
 
-    def _valid(self, epoch, dataloader):
+    def _valid(self, epoch, dataloader, n_sample_image):
         images = []
-        for x, y in dataloader:
+        for i, (x, y) in enumerate(dataloader):
             images.append(self.model.generate_image_to_numpy(x, y))
+            if n_sample_image-1 == i:
+                break
 
         images = np.array(images)
         save_image = show_plt(images, n_rows=images.shape[0], n_cols=images.shape[1], show=False, save_path=os.path.join(self.log_path, f'{self.model.name}_image_epoch_{epoch+1}.png'))
         save_image = torch.tensor(save_image).permute(2,0,1).unsqueeze(dim=0)
         self.writer.add_images('image', save_image, epoch)
 
-    def train(self, train_loader, valid_loader, lr_scheduler, num_epochs, save_freg ='g_loss'):
+    def train(self, train_loader, valid_loader, lr_scheduler, num_epochs, save_freg ='g_loss', n_sample_image=100):
         logging.info("params: ")
         for name, value in self.model.__dict__.items():
             logging.info(f"{name}: {value}")
@@ -142,7 +144,7 @@ class Trainer:
         lr_scheduler.reg_optimizer(self.model.D_optimizer)
 
         for epoch in range(self.start_epoch, num_epochs+1):
-            self._epoch(epoch, train_loader, valid_loader)
+            self._epoch(epoch, train_loader, valid_loader, n_sample_image)
 
             if save_freg == 'g_loss':
                 if best_loss > self.losses['G'][-1]:
@@ -265,9 +267,9 @@ if __name__ == "__main__":
             transforms.Resize((256, 256)),
             transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
         ])
-        train_dataset = StyleTransferDataset(root="data/horse2zebra/", train=True, transform=transforms)
+        train_dataset = StyleTransferDataset(root="data/horse2zebra/", limit=64, train=True, transform=transforms)
         train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True)
-        valid_dataset = StyleTransferDataset(root="data/horse2zebra/", limit=10, train=False, transform=transforms)
+        valid_dataset = StyleTransferDataset(root="data/horse2zebra/", train=False, transform=transforms)
         valid_loader = DataLoader(valid_dataset, batch_size=1, shuffle=True)
 
         data_shape = (3, 256, 256)
@@ -325,4 +327,4 @@ if __name__ == "__main__":
 
     lr_scheduler = LRScheduler(args.epochs, scheduler_type=args.lr_scheduler, start_schedule_epoch=args.start_schedule_epoch)
     trainer = Trainer(model, train_gen_per_iter=train_gen_per_iter, log_path=args.log_path, checkpoint=args.checkpoint)
-    trainer.train(train_loader, valid_loader, lr_scheduler, args.epochs, save_freg='epoch')
+    trainer.train(train_loader, valid_loader, lr_scheduler, args.epochs, save_freg='epoch', n_sample_image=10)
