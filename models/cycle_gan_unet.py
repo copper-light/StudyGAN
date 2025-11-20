@@ -14,6 +14,13 @@ class ConvBlock(nn.Module):
         super().__init__()
         layer = []
 
+        if stride % 2 == 0 and padding == 'same':
+            padding = stride // 4
+            if padding_mode == 'zeros':
+                layer += [nn.ZeroPad2d((1,0,1,0))]
+            elif padding_mode == 'reflect':
+                layer += [nn.ReflectionPad2d((1,0,1,0))]
+
         use_bias = norm != 'batch'
         layer += [nn.Conv2d(input_channel, output_channel, kernel_size, stride=stride, padding=padding, padding_mode=padding_mode, bias=use_bias)]
 
@@ -140,24 +147,21 @@ class CycleGAN(GAN):
     def _train_gen(self, g, gen_x, d, x, y):
         x = x.to(self.device)
         y = y.to(self.device)
-        fake_x = gen_x(y).detach()
         one = torch.ones(1).to(self.device)
 
-        g.train()
         fake_y = g(x)
         pred = d(fake_y)
         one = one.expand_as(pred)
         loss_validation = self.criterion_mse(pred, one)
 
+        fake_x = gen_x(y)
         reconstruction_y = g(fake_x)
         loss_reconstruction = self.criterion_l1(reconstruction_y, y)
 
         identity_y = g(y)
         loss_identity = self.criterion_l1(identity_y, y)
 
-        loss = (self.lambda_validation * loss_validation) + (self.lambda_reconstruction * loss_reconstruction) + (self.lambda_identity * loss_identity)
-
-        return loss
+        return loss_validation, loss_reconstruction, loss_identity
 
 
     def _train_disc(self, g, d, x):
@@ -177,9 +181,13 @@ class CycleGAN(GAN):
         return (loss_real + loss_fake) * 0.5
 
     def train_generator(self, img_a, img_b):
-        loss_ab = self._train_gen(self.G_ab, self.G_ba, self.D_ab, img_a, img_b)
-        loss_ba = self._train_gen(self.G_ba, self.G_ab, self.D_ba, img_b, img_a)
-        loss = (loss_ab + loss_ba)
+        self.G_ab.train()
+        self.G_ba.train()
+        a_validation, a_reconstruction, a_identity = self._train_gen(self.G_ab, self.G_ba, self.D_ab, img_a, img_b)
+        b_validation, b_reconstruction, b_identity = self._train_gen(self.G_ba, self.G_ab, self.D_ba, img_b, img_a)
+        loss = (self.lambda_validation * (a_validation+b_validation)) + (self.lambda_reconstruction * (a_reconstruction+b_reconstruction)) + (self.lambda_identity * (a_identity+b_identity))
+        
+        # loss = (loss_ab + loss_ba)
 
         self.G_optimizer.zero_grad()
         loss.backward()

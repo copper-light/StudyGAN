@@ -28,8 +28,8 @@ class StyleTransferDataset(Dataset):
             if not os.path.exists(cache_file_path):
                 a_path = glob(os.path.join(self.root, f'{middle_path}A/*.jpg'))
                 b_path = glob(os.path.join(self.root, f'{middle_path}B/*.jpg'))
-                self.a = np.array([self._open_image(p) for p in a_path]).astype(np.float32) / 255.
-                self.b = np.array([self._open_image(p) for p in b_path]).astype(np.float32) / 255.
+                self.a = np.array([self._open_image(p) for p in a_path]).astype(np.float32)
+                self.b = np.array([self._open_image(p) for p in b_path]).astype(np.float32)
                 with h5py.File(cache_file_path, 'w') as f:
                     f.create_dataset('trainA', data=self.a)
                     f.create_dataset('trainB', data=self.b)
