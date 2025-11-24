@@ -1,7 +1,6 @@
 import os
 
 from fontTools.misc.plistlib import end_data
-
 os.environ['TF_ENABLE_ONEDNN_OPTS'] = '0'
 
 import sys
@@ -26,6 +25,7 @@ from models.wgan_gp import WGAN_GP
 from models.wgan_gp_c import WGAN_GP_C
 from models.cycle_gan_unet import CycleGAN
 from models.cycle_gan_resnet import CycleGANResNet
+from models.neural_style_transfer import NeuralStyleTransfer
 
 TIME_FORMAT = ('%Y%m%d_%H%M%S')
 
@@ -140,8 +140,10 @@ class Trainer:
 
         best_loss = float('inf')
 
-        lr_scheduler.reg_optimizer(self.model.G_optimizer)
-        lr_scheduler.reg_optimizer(self.model.D_optimizer)
+        if self.model.G_optimizer is not None:
+            lr_scheduler.reg_optimizer(self.model.G_optimizer)
+        if self.model.D_optimizer is not None:
+            lr_scheduler.reg_optimizer(self.model.D_optimizer)
 
         for epoch in range(self.start_epoch, num_epochs+1):
             self._epoch(epoch, train_loader, valid_loader, n_sample_image)
@@ -167,7 +169,7 @@ class Trainer:
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="GAN model trainer.")
-    parser.add_argument('--models', type=str, default='DCGAN', choices=['GAN', 'GAN-C', 'DCGAN', 'DCGAN-C', 'WGAN', 'WGAN-GP','WGAN-GP-C', 'CYCLE-GAN', 'CYCLE-GAN-RESNET'])
+    parser.add_argument('--model', type=str, default='DCGAN', choices=['GAN', 'GAN-C', 'DCGAN', 'DCGAN-C', 'WGAN', 'WGAN-GP','WGAN-GP-C', 'CYCLE-GAN', 'CYCLE-GAN-RESNET', 'NST'])
     parser.add_argument('--lr', type=float, default=1e-4)
     parser.add_argument('--batch-size', type=int, default=32)
     parser.add_argument('--epochs', type=int, default=1)
@@ -177,6 +179,7 @@ if __name__ == "__main__":
     parser.add_argument('--log-path', type=str, default='logs/')
     parser.add_argument('--dataset', type=str, default='mnist', choices=['mnist', 'cifar10', 'apple2orange', 'monet2photo', 'horse2zebra'])
     parser.add_argument('--checkpoint', type=str)
+    parser.add_argument('--train-data-limit', type=int)
     args = parser.parse_args()
 
     import torchvision.transforms as transforms
@@ -196,6 +199,10 @@ if __name__ == "__main__":
 
     start_epoch = 1
     train_gen_per_iter = 1
+
+    n_sample_image = 10
+
+    data_limit = args.train_data_limit
 
     if args.dataset == 'mnist':
         transforms = transforms.Compose([
@@ -252,7 +259,7 @@ if __name__ == "__main__":
             transforms.Resize((256, 256)),
             transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
         ])
-        train_dataset = StyleTransferDataset(root="data/monet2photo/", train=True, transform=transforms)
+        train_dataset = StyleTransferDataset(root="data/monet2photo/", train=True, limit=data_limit,transform=transforms)
         train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True)
         valid_dataset = StyleTransferDataset(root="data/monet2photo/", limit=10, train=False, transform=transforms)
         valid_loader = DataLoader(valid_dataset, batch_size=1, shuffle=True)
@@ -267,7 +274,7 @@ if __name__ == "__main__":
             transforms.RandomHorizontalFlip(),
             transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
         ])
-        train_dataset = StyleTransferDataset(root="data/horse2zebra/", train=True, transform=transforms)
+        train_dataset = StyleTransferDataset(root="data/horse2zebra/", train=True, limit=data_limit, transform=transforms)
         train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True)
         valid_dataset = StyleTransferDataset(root="data/horse2zebra/", train=False, transform=transforms)
         valid_loader = DataLoader(valid_dataset, batch_size=1, shuffle=True)
@@ -282,29 +289,29 @@ if __name__ == "__main__":
         if torch.cuda.is_available():
             device = 'cuda'
 
-    if args.models == 'GAN':
+    if args.model == 'GAN':
         model = GAN(input_dim=data_shape, output_dim=data_shape, name="GAN", device=device, is_train=True, lr=args.lr)
 
-    elif args.models == 'GAN-C':
+    elif args.model == 'GAN-C':
         model = GAN(input_dim=data_shape, output_dim=data_shape, name="GAN-Conditional", device=device, is_train=True, lr=args.lr, num_classes=len(train_dataset.classes))
 
-    elif args.models == 'DCGAN':
+    elif args.model == 'DCGAN':
         model = DCGAN(input_dim=data_shape, output_dim=data_shape, name="DCGAN", device=device, is_train=True, lr=args.lr)
 
-    elif args.models == 'DCGAN-C':
+    elif args.model == 'DCGAN-C':
         model = DCGAN(input_dim=data_shape, output_dim=data_shape, name="DCGAN-Conditional", device=device, is_train=True, lr=args.lr, num_classes=len(train_dataset.classes))
 
-    elif args.models == 'WGAN':
+    elif args.model == 'WGAN':
         clip_threshold = 0.1
         train_gen_per_iter = 5
         model = WGAN(input_dim=data_shape, output_dim=data_shape, name="WGAN", device=device, is_train=True, lr=args.lr, clip_threshold = clip_threshold)
 
-    elif args.models == 'WGAN-GP':
+    elif args.model == 'WGAN-GP':
         train_gen_per_iter = 5
         gp_weight = 10
         model = WGAN_GP(input_dim=data_shape, output_dim=data_shape, name="WGAN-GP", device=device, is_train=True, lr=args.lr, gp_weight=gp_weight)
 
-    elif args.models == 'WGAN-GP-C':
+    elif args.model == 'WGAN-GP-C':
         train_gen_per_iter = 5
         gp_weight = 10
         model = WGAN_GP_C(input_dim=data_shape, output_dim=data_shape, 
@@ -312,19 +319,24 @@ if __name__ == "__main__":
                           lr=args.lr, gp_weight=gp_weight, 
                           num_classes=len(train_dataset.classes))
 
-    elif args.models == 'CYCLE-GAN':
+    elif args.model == 'CYCLE-GAN':
         model = CycleGAN(input_dim=data_shape, output_dim=data_shape,
                          name="CYCLE-GAN", device=device, is_train=True,
                          lr=args.lr,
                          gen_n_filters=32, disc_n_filters=32,
                          lambda_validation = 1, lambda_reconstruction = 10, lambda_identity = 2)
-    elif args.models == 'CYCLE-GAN-RESNET':
+    elif args.model == 'CYCLE-GAN-RESNET':
         model = CycleGANResNet(input_dim=data_shape, output_dim=data_shape,
                          name="CYCLE-GAN-RESNET", device=device, is_train=True,
                          lr=args.lr,
                          gen_n_filters=64, disc_n_filters=64,
                          lambda_validation=1, lambda_reconstruction=10, lambda_identity=5)
 
+    elif args.model == 'NST':
+        model = NeuralStyleTransfer(input_dim=data_shape, output_dim=data_shape)
+        # n_sample_image = 3
+
+
     lr_scheduler = LRScheduler(args.epochs, scheduler_type=args.lr_scheduler, start_schedule_epoch=args.start_schedule_epoch)
     trainer = Trainer(model, train_gen_per_iter=train_gen_per_iter, log_path=args.log_path, checkpoint=args.checkpoint)
-    trainer.train(train_loader, valid_loader, lr_scheduler, args.epochs, save_freg='epoch', n_sample_image=10)
+    trainer.train(train_loader, valid_loader, lr_scheduler, args.epochs, save_freg='epoch', n_sample_image=n_sample_image)

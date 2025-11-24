@@ -12,12 +12,20 @@ def show_plt(images, n_rows=10, n_cols=10, show = False, save_path = None):
     fig, axes = plt.subplots(n_rows, n_cols, figsize=(20, 20))
 
     image_index = 0
-    if n_rows == 1:
-        for i in range(n_cols):
+    if n_rows == 1 or n_cols == 1:
+        for i in range(max(n_cols, n_rows)):
             ax = axes[i]
-            image = images[0][i]  # numpy
+
+            if n_rows == 1:
+                image = images[0][i]
+            elif n_cols == 1:
+                image = images[i][0]
+            else:
+                image = images[0][0]
+
+            # numpy
             image = image * 0.5 + 0.5
-            if images.shape[1] == 1:
+            if image.shape[0] == 1:
                 image = image.reshape(28, 28)
                 ax.imshow(image, cmap='gray')
             else:
@@ -33,7 +41,7 @@ def show_plt(images, n_rows=10, n_cols=10, show = False, save_path = None):
                 ax = axes[i,j]
                 image = images[i][j] # numpy
                 image = image * 0.5 + 0.5
-                if images.shape[1] == 1:
+                if image.shape[0] == 1:
                     image = image.reshape(28, 28)
                     ax.imshow(image, cmap='gray')
                 else:
