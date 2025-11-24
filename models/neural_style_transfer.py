@@ -118,7 +118,11 @@ class NeuralStyleTransfer(Model):
         return None
 
     def generate_image_to_numpy(self, x, y):
-        return self.combination_image.detach().cpu().numpy()
+        return torch.concat([
+            x,
+            y,
+            self.combination_image.detach().cpu(),
+        ]).cpu().numpy()
 
     def get_checkpoint(self):
         pass

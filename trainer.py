@@ -333,8 +333,8 @@ if __name__ == "__main__":
                          lambda_validation=1, lambda_reconstruction=10, lambda_identity=5)
 
     elif args.model == 'NST':
-        model = NeuralStyleTransfer(input_dim=data_shape, output_dim=data_shape)
-        # n_sample_image = 3
+        model = NeuralStyleTransfer(name='NeuralStyleTransfer', input_dim=data_shape, output_dim=data_shape)
+        n_sample_image = 1
 
 
     lr_scheduler = LRScheduler(args.epochs, scheduler_type=args.lr_scheduler, start_schedule_epoch=args.start_schedule_epoch)
