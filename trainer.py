@@ -130,7 +130,7 @@ class Trainer:
                 break
 
         images = np.array(images)
-        save_image = show_plt(images, n_rows=images.shape[0], n_cols=images.shape[1], show=False, save_path=os.path.join(self.log_path, f'{self.model.name}_image_epoch_{epoch+1}.png'))
+        save_image = show_plt(images, n_rows=images.shape[0], n_cols=images.shape[1], show=False, save_path=os.path.join(self.log_path, f'{self.model.name}_image_epoch_{epoch}.png'))
         save_image = torch.tensor(save_image).permute(2,0,1).unsqueeze(dim=0)
         self.writer.add_images('image', save_image, epoch)
 
@@ -183,7 +183,7 @@ if __name__ == "__main__":
     parser.add_argument('--start_schedule_epoch', type=int, default=0)
     parser.add_argument('--use-gpu', type=str2bool, default=True, choices=['True', 'False', 'true', 'false'])
     parser.add_argument('--log-path', type=str, default='logs/')
-    parser.add_argument('--dataset', type=str, default='mnist', choices=['mnist', 'cifar10', 'apple2orange', 'monet2photo', 'horse2zebra', 'goghstyle'])
+    parser.add_argument('--dataset', type=str, default='mnist', choices=['mnist', 'cifar10', 'apple2orange', 'monet2photo', 'horse2zebra', 'goghstyle', 'anistyle'])
     parser.add_argument('--checkpoint', type=str)
     parser.add_argument('--train-data-limit', type=int)
     args = parser.parse_args()
@@ -302,6 +302,22 @@ if __name__ == "__main__":
 
         data_shape = (3, 256, 256)
 
+
+    elif args.dataset == 'anistyle':
+        from datasets.styletransfer import StyleTransferDataset
+
+        transforms = transforms.Compose([
+            transforms.ToTensor(),
+            transforms.Resize((512, 512)),
+        ])
+        train_dataset = StyleTransferDataset(root="data/ani_style/", train=True, limit=data_limit,
+                                             transform=transforms)
+        train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True)
+        valid_dataset = StyleTransferDataset(root="data/ani_style/", train=False, transform=transforms)
+        valid_loader = DataLoader(valid_dataset, batch_size=1, shuffle=True)
+
+        data_shape = (3, 512, 512)
+
     assert train_loader is not None, "Not found dataset"
 
     device = 'cpu'
@@ -353,7 +369,8 @@ if __name__ == "__main__":
                          lambda_validation=1, lambda_reconstruction=10, lambda_identity=5)
 
     elif args.model == 'NST':
-        model = NeuralStyleTransfer(name='NeuralStyleTransfer', input_dim=data_shape, output_dim=data_shape)
+        model = NeuralStyleTransfer(name='NeuralStyleTransfer', input_dim=data_shape, output_dim=data_shape,
+                                    content_weight = 1, style_weight = 1000, total_variation_weight = 1)
         n_sample_image = 1
 
 

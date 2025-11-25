@@ -67,14 +67,24 @@ class StyleLoss(nn.Module):
         return style_loss
 
 
+# class TotalVariationLoss(nn.Module):
+#     def __init__(self):
+#         super().__init__()
+#
+#     def forward(self, image):
+#         h = torch.square(image[:, :, :-1, :-1] - image[:, :, 1:, :-1])
+#         w = torch.square(image[:, :, :-1, :-1] - image[:, :, :-1, 1:])
+#         return torch.sum(torch.pow(h + w, 1.25))
+
+
 class TotalVariationLoss(nn.Module):
     def __init__(self):
         super().__init__()
 
     def forward(self, image):
-        h = torch.square(image[:, :, :-1, :-1] - image[:, :, 1:, :-1])
-        w = torch.square(image[:, :, :-1, :-1] - image[:, :, -1:, 1:])
-        return torch.sum(torch.pow(h + w, 1.25))
+        h = torch.abs(image[:, :, :-1, :] - image[:, :, 1:, :])
+        w = torch.abs(image[:, :, :, :-1] - image[:, :, :, 1:])
+        return torch.sum(h) + torch.sum(w)
 
 
 class NeuralStyleTransfer(Model):
@@ -94,12 +104,22 @@ class NeuralStyleTransfer(Model):
         self.combination_image = torch.randn(1, input_dim[0], input_dim[1], input_dim[2], device = device, requires_grad = True, dtype = torch.float)
         self.optimizer = optim.LBFGS([self.combination_image])
 
-    def _setup_image(self, image):
+    def _setup_image(self, base, style):
         if self.is_set_image is False:
             self.combination_image.requires_grad_(False)
-            self.combination_image.copy_(image)
+            self.combination_image.copy_(base)
             self.combination_image.requires_grad_(True)
             self.is_set_image = True
+
+            x = torch.concat([base, style], dim=0)
+            last_feature, middle_features = self.model(x)
+
+            self.base_last_feature = last_feature[0].detach()
+            self.style_middle_features = []
+
+            for f in middle_features:
+                self.style_middle_features.append(f[1].detach())
+
 
     def train_discriminator(self, x, target) -> tuple[float, dict]:
         return .0, None
@@ -115,27 +135,25 @@ class NeuralStyleTransfer(Model):
         last_tv_loss = None
         last_loss = None
 
-        self._setup_image(base)
+        self._setup_image(base, style)
 
         def closure():
             nonlocal last_content_loss, last_style_loss, last_tv_loss, last_loss
             self.optimizer.zero_grad()
-            x = torch.concat([base, style, self.combination_image], dim=0)
-            last_feature, middle_features = self.model(x)
 
-            content_loss = self.criterion_content(last_feature[2], last_feature[0].detach()) * self.content_weight
+            last_feature, middle_features = self.model(self.combination_image)
+
+            content_loss = self.criterion_content(last_feature[0], self.base_last_feature) * self.content_weight
 
             style_loss = torch.tensor(.0)
-            for feature in middle_features:
-                style_loss += self.criterion_style(feature[2], feature[1].detach())
+            for i, feature in enumerate(middle_features):
+                style_loss += self.criterion_style(feature[0], self.style_middle_features[i])
             style_loss = (style_loss / len(middle_features)) * self.style_weight
 
             tv_loss = self.criterion_tv(self.combination_image) * self.total_variation_weight
 
             loss = content_loss + style_loss + tv_loss
             loss.backward()
-
-            print(loss.item(), content_loss.item(), style_loss.item(), tv_loss.item())
 
             last_content_loss = content_loss.item()
             last_style_loss = style_loss.item()

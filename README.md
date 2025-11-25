@@ -58,6 +58,22 @@ python .\trainer.py --model "CYCLE-GAN" --dataset "apple2orange" --epochs 80 --b
 python .\trainer.py --model "CYCLE-GAN-RESNET" --dataset "horse2zebra" --epochs 80 --batch-size 1 --lr 0.0002
 ```
 
+### 6. Neural Style Transfer
+* 단 2장!의 데이터만으로 이미지 스타일을 변경하는 모델
+* 사전학습된 모델이 필요하며, 제안 논문에서는 구조가 단순화된 VGG를 베이스로 사용함
+* 제안 논문에서는 Content Loss 와 Style Loss 만 제시 했지만, 향후 이미지의 노이즈가 너무 많은 케이스들로 인해서 Total Variation Loss 가 추가됨
+  * 근데 Total Variation Loss 는 이미지를 뭉개는 역할도 수행하기 때문에 상황에 따라 적절하게 사용하는게 나은듯
+  * 512 픽셀 이하의 실험 케이스들에서는 학습 초기 때를 제외하고는 대부분은 제거하는게 이미지가 나았음
+* 학습데이터는 trainA, testA 에 동일한 베이스 이미지 한장, trainB, testB 에 동일한 스타일 이미지 한장 넣으면 됨
+  * /data/gogh_style
+    * trainA/: https://www.google.com/url?sa=t&source=web&rct=j&url=https%3A%2F%2Fwww.stubbyplanner.com%2Fexp%2Fexpdetail.asp%3Fexpserial%3D2389&ved=0CBUQjRxqFwoTCIDZoazYjJEDFQAAAAAdAAAAABAi&opi=89978449 
+    * testA/: https://www.google.com/url?sa=t&source=web&rct=j&url=https%3A%2F%2Fwww.stubbyplanner.com%2Fexp%2Fexpdetail.asp%3Fexpserial%3D2389&ved=0CBUQjRxqFwoTCIDZoazYjJEDFQAAAAAdAAAAABAi&opi=89978449
+    * trainB/: https://www.google.com/url?sa=t&source=web&rct=j&url=http%3A%2F%2Fwww.cbmakers.co.kr%2Fnews%2FarticleView.html%3Fidxno%3D5651&ved=0CBUQjRxqFwoTCNCis5LYjJEDFQAAAAAdAAAAABAH&opi=89978449
+    * testB/: https://www.google.com/url?sa=t&source=web&rct=j&url=http%3A%2F%2Fwww.cbmakers.co.kr%2Fnews%2FarticleView.html%3Fidxno%3D5651&ved=0CBUQjRxqFwoTCNCis5LYjJEDFQAAAAAdAAAAABAH&opi=89978449
+```bash
+python .\trainer.py --model "NST" --dataset "goghstyle" --epochs 80 --batch-size 1 --train-data-limit 1
+```
+
 
 ### How to train a model
 * mnist 데이터를 사용하고 별도로 다운받아서 data/MNIST/raw/* 폴더 아래 바이너리 파일들 위치시킬 것

@@ -24,14 +24,14 @@ def show_plt(images, n_rows=10, n_cols=10, show = False, save_path = None):
                 image = images[0][0]
 
             # numpy
-            image = image * 0.5 + 0.5
+            # image = image * 0.5 + 0.5
             if image.shape[0] == 1:
                 image = image.reshape(28, 28)
                 ax.imshow(image, cmap='gray')
             else:
                 image = np.transpose(image, (1, 2, 0))
-                image = image * 255
-                image = image.astype(np.uint8)
+                # image = image * 255
+                # image = image.astype(np.uint8)
                 ax.imshow(image)
             image_index = image_index + 1
             ax.axis('off')  # 축 숨기기
@@ -40,14 +40,14 @@ def show_plt(images, n_rows=10, n_cols=10, show = False, save_path = None):
             for j in range(n_cols):
                 ax = axes[i,j]
                 image = images[i][j] # numpy
-                image = image * 0.5 + 0.5
+                # image = image * 0.5 + 0.5
                 if image.shape[0] == 1:
                     image = image.reshape(28, 28)
                     ax.imshow(image, cmap='gray')
                 else:
                     image = np.transpose(image, (1, 2, 0))
-                    image = image * 255
-                    image = image.astype(np.uint8)
+                    # image = image * 255
+                    # image = image.astype(np.uint8)
                     ax.imshow(image)
                 image_index = image_index + 1
                 ax.axis('off')  # 축 숨기기
