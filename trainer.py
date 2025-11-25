@@ -370,7 +370,7 @@ if __name__ == "__main__":
 
     elif args.model == 'NST':
         model = NeuralStyleTransfer(name='NeuralStyleTransfer', input_dim=data_shape, output_dim=data_shape,
-                                    content_weight = 1, style_weight = 1000, total_variation_weight = 1)
+                                    content_weight = 1, style_weight = 100, total_variation_weight = 0)
         n_sample_image = 1
 
 
