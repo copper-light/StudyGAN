@@ -177,7 +177,7 @@ if __name__ == "__main__":
     parser.add_argument('--start_schedule_epoch', type=int, default=0)
     parser.add_argument('--use-gpu', type=str2bool, default=True, choices=['True', 'False', 'true', 'false'])
     parser.add_argument('--log-path', type=str, default='logs/')
-    parser.add_argument('--dataset', type=str, default='mnist', choices=['mnist', 'cifar10', 'apple2orange', 'monet2photo', 'horse2zebra'])
+    parser.add_argument('--dataset', type=str, default='mnist', choices=['mnist', 'cifar10', 'apple2orange', 'monet2photo', 'horse2zebra', 'goghstyle'])
     parser.add_argument('--checkpoint', type=str)
     parser.add_argument('--train-data-limit', type=int)
     args = parser.parse_args()
@@ -281,6 +281,20 @@ if __name__ == "__main__":
 
         data_shape = (3, 256, 256)
 
+    elif args.dataset == 'goghstyle':
+        from datasets.styletransfer import StyleTransferDataset
+
+        transforms = transforms.Compose([
+            transforms.ToTensor(),
+            transforms.Resize((256, 256)),
+        ])
+        train_dataset = StyleTransferDataset(root="data/gogh_style/", train=True, limit=data_limit,
+                                             transform=transforms)
+        train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True)
+        valid_dataset = StyleTransferDataset(root="data/gogh_style/", train=False, transform=transforms)
+        valid_loader = DataLoader(valid_dataset, batch_size=1, shuffle=True)
+
+        data_shape = (3, 256, 256)
 
     assert train_loader is not None, "Not found dataset"
 

@@ -15,6 +15,10 @@ class Encoder(nn.Module):
         model = model.features[:31]
         modules = []
         layers = []
+
+        self.register_buffer("mean", torch.tensor([0.485, 0.456, 0.406]).reshape(1, 3, 1, 1))
+        self.register_buffer("std", torch.tensor([0.229, 0.224, 0.225]).reshape(1, 3, 1, 1))
+
         for i, l in enumerate(model.children()):
             layers.append(l)
             if i in conv_indexes:
@@ -26,6 +30,7 @@ class Encoder(nn.Module):
         self.modules = modules
 
     def forward(self, x):
+        x  = (x - self.mean) / self.std
         middle_outputs = []
         for m in self.modules:
             x = m(x)
