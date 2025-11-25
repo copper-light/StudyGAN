@@ -45,6 +45,7 @@ logger = logging.getLogger(__name__)
 logger.addHandler(out)
 logger.addHandler(err)
 
+
 class Trainer:
     def __init__(self, model, iter_per_print = 100, train_gen_per_iter = 5, gp_weight = 10, log_path="log", checkpoint=None):
         self.model = model
@@ -88,6 +89,7 @@ class Trainer:
                         monitor_values[name] = []
                     monitor_values[name].append(value)
 
+            g_values = {}
             if step % self.train_gen_per_iter == 0:
                 g_loss, g_values = self.model.train_generator(x, y)
                 if g_values is not None:
@@ -97,7 +99,7 @@ class Trainer:
                         monitor_values[name].append(value)
                 g_losses.append(g_loss)
 
-            progress.set_postfix({'epoch':epoch, 'step': self.step, 'd_loss': np.mean(d_losses), 'g_loss': np.mean(g_losses)})
+            progress.set_postfix({'epoch':epoch, 'step': self.step, 'd_loss': np.mean(d_losses), 'g_loss': np.mean(g_losses), 'd_values':d_values, 'g_values': g_values})
 
         self._valid(epoch, valid_loader, n_sample_image)
 
@@ -107,10 +109,14 @@ class Trainer:
         s = int(time.time() - start_time)
         m = s // 60
         s = s % 60
-        logging.info(f"elapsed: {m:02d}:{s:02d}, epoch: {epoch}, step: {self.step}, d_loss: {np.mean(d_losses):.04f}, g_loss: {np.mean(g_losses):.04f}")
+
+        monitor_dict = {}
         for name, value in monitor_values.items():
-            logging.info(f"  -{name}: {np.mean(value):.04f}")
-            self.writer.add_scalar(name, np.mean(value), epoch)
+            means = float(np.mean(value))
+            monitor_dict[name] = means
+            self.writer.add_scalar(name, means, epoch)
+
+        logging.info(f"elapsed: {m:02d}:{s:02d}, epoch: {epoch}, step: {self.step}, d_loss: {np.mean(d_losses):.04f}, g_loss: {np.mean(g_losses):.04f}, {monitor_dict}")
 
         self.writer.add_scalar('d_loss', np.mean(d_losses), epoch)
         self.writer.add_scalar('g_loss', np.mean(g_losses), epoch)
